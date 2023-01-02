@@ -1,0 +1,21 @@
+流程：
+  1、位置滤波（推测位置+运动界限）
+  2、聚类保存
+  3、聚类选取
+  4、计算位置
+
+// if(cloud_filtered->size() > 0){
+//     vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin();
+//     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+//     for (const auto& idx : it->indices){
+//         cloud_cluster->push_back((*cloud_filtered)[idx]);
+//     }
+//     cloud_cluster->width = cloud_cluster->size ();
+//     cloud_cluster->height = 1;
+//     cloud_cluster->is_dense = true;
+//     ROS_INFO("size of clustered_cloud is %d", (int)cloud_cluster->size());
+
+//     pcl::toROSMsg(*cloud_cluster, pub_pc);
+//     pub_pc.header = point_in.header;
+//     pub_clustered_cloud.publish(pub_pc); 
+// }
