@@ -1,8 +1,3 @@
-流程：
-  1、位置滤波（推测位置+运动界限）
-  2、聚类保存
-  3、聚类选取
-  4、计算位置
 
 // if(cloud_filtered->size() > 0){
 //     vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin();

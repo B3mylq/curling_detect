@@ -99,7 +99,7 @@ vector<pcl::PointXYZ> central_poses;
 void curling_init(){
     curlingPose.header.frame_id = lidar_frame_id;
     curlingPose.header.stamp = ros::Time::now();
-    curlingPose.pose.position.x = 6;
+    curlingPose.pose.position.x = 5;
     curlingPose.pose.position.y = 1;
     curlingPose.pose.position.z = 0;
 
