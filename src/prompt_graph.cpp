@@ -169,10 +169,11 @@ int main(int argc, char **argv)
 
     // 范围提示框
     geometry_msgs::Point origin;
+    double x_offset = 7, y_offset = 4;
     double range = 1;
     origin.z = 0.1;
-    origin.y = 3 + 0.5;
-    origin.x = -21.946/2 - 0.5;
+    origin.y = y_offset + 0.5;
+    origin.x = -x_offset - 0.5;
     p = origin; p.x = origin.x + range; p.y = origin.y + range;
     prompt_list.points.push_back(p);
     p.y = origin.y - range;
@@ -187,8 +188,8 @@ int main(int argc, char **argv)
     p.x = origin.x + range;
     prompt_list.points.push_back(p);
     origin.z = 0.1;
-    origin.y = 3 + 4.950 + 0.5;
-    origin.x = -21.946/2 - 0.5;
+    origin.y = y_offset + 4.950 + 0.5;
+    origin.x = -x_offset - 0.5;
     p = origin; p.x = origin.x + range; p.y = origin.y + range;
     prompt_list.points.push_back(p);
     p.y = origin.y - range;
@@ -205,8 +206,8 @@ int main(int argc, char **argv)
 
     // 校准提示
     origin.z = 0.1;
-    origin.y = 3;
-    origin.x = -21.946/2;
+    origin.y = y_offset;
+    origin.x = -x_offset;
     p = origin; 
     calibrate_list.points.push_back(p);
     p.y = origin.y + range;
@@ -216,8 +217,8 @@ int main(int argc, char **argv)
     p.x = origin.x - range;
     calibrate_list.points.push_back(p);
     origin.z = 0.1;
-    origin.y = 3 + 4.950;
-    origin.x = -21.946/2;
+    origin.y = y_offset + 4.950;
+    origin.x = -x_offset;
     p = origin; 
     calibrate_list.points.push_back(p);
     p.y = origin.y + range;
@@ -259,7 +260,7 @@ int main(int argc, char **argv)
     add_noise(test_cloud);
 
     Eigen::Isometry3d T = Eigen::Isometry3d::Identity();
-    T.pretranslate(Eigen::Vector3d (-(11.888+21.946/2), 3, 0));
+    T.pretranslate(Eigen::Vector3d (-(11.888+x_offset), y_offset, 0));
     pcl::PointCloud<pcl::PointXYZI>::Ptr trasformed_cloud = points_transform(test_cloud, T);
 
     while (ros::ok())

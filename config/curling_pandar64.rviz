@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Grid1
       Splitter Ratio: 0.5
     Tree Height: 488
   - Class: rviz/Selection
@@ -26,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -64,7 +63,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -79,7 +78,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -148,7 +147,7 @@ Visualization Manager:
       Axes Radius: 0.10000000149011612
       Class: rviz/Pose
       Color: 255; 25; 0
-      Enabled: false
+      Enabled: true
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: Pose
@@ -157,7 +156,7 @@ Visualization Manager:
       Shape: Arrow
       Topic: /curling_pose
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -185,7 +184,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 252; 175; 62
-      Enabled: false
+      Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -203,7 +202,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /curling_path_udp
       Unreliable: false
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -232,25 +231,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 29.908937454223633
+      Distance: 13.106891632080078
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -6.186142921447754
-        Y: -10.592191696166992
-        Z: -2.5373119569849223e-5
+        X: 1.2194643020629883
+        Y: -3.250788450241089
+        Z: -2.3942608095239848e-5
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.38479742407798767
+      Pitch: 0.7047971487045288
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz)
-      Yaw: 3.3415825366973877
+      Yaw: 3.226581573486328
     Saved: ~
 Window Geometry:
   Displays:

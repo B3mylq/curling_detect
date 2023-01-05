@@ -20,6 +20,13 @@
 
 using namespace std;
 
+// 激光雷达参数(hesai-64)
+string lidar_frame_id = "Pandar64", lidar_pc_topic = "/hesai/pandar";
+const int vertical_num = 64, horizon_num = 1800;
+const float vertical_accuracy = 0.167, horizon_accuracy = 0.2;
+const float min_angle = -25, max_angle = 15;
+const float ANG = 57.2957795; // 弧度制转角度的比例因数
+
 pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 pcl::PointCloud<pcl::PointXYZI>::Ptr lane_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 pcl::PointCloud<pcl::PointXYZI>::Ptr check_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -30,6 +37,82 @@ sensor_msgs::PointCloud2 line_cloud_pub;
 sensor_msgs::PointCloud2 check_cloud_pub;
 
 Eigen::Isometry3d transform_matrix;
+
+pcl::PointCloud<pcl::PointXYZI>::Ptr position_filter(double x, double y, double z)
+{
+    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::PointIndices::Ptr inliers_pose(new pcl::PointIndices());
+    pcl::ExtractIndices<pcl::PointXYZI> extract_pose;
+    geometry_msgs::Point origin;
+    double range = 1;
+    origin.z = z;
+    origin.y = y;
+    origin.x = x;
+
+    vector<double> poseLimit = {origin.x - range, -(origin.x + range),
+                                origin.y - range, -(origin.y + range),
+                                origin.z - range, -(origin.z + range)};
+    vector<double> limitCheck = {range, range, range, range, 0, 0};
+    // ROS_INFO("pose limit x(%f, %f), y(%f, %f), z(%f, %f)", poseLimit[0],poseLimit[1],poseLimit[2],poseLimit[3],poseLimit[4],poseLimit[5]);
+
+    for (int i = 0; i < (*input_cloud).size(); i++)
+    {
+        pcl::PointXYZ pt(input_cloud->points[i].x, input_cloud->points[i].y, input_cloud->points[i].z);
+        vector<double> poseComp = {pt.x, -pt.x, pt.y, -pt.y, pt.z, -pt.z};
+
+        for (int j = 0; j < 6; j++)
+        {
+            if (limitCheck[j])
+            {
+                if (poseComp[j] < poseLimit[j])
+                {
+                    inliers_pose->indices.push_back(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    extract_pose.setInputCloud(input_cloud);
+    extract_pose.setIndices(inliers_pose);
+    extract_pose.setNegative(true);
+    extract_pose.filter(*filtered_cloud);
+    return filtered_cloud;
+}
+
+void vertical_angle_filter(double target_angle){
+    pcl::PointCloud<pcl::PointXYZI>::Ptr target_points(new pcl::PointCloud<pcl::PointXYZI>);
+
+    vector<vector<int>> idx_of_cols(horizon_num);
+    for(int idx = 0; idx < input_cloud->points.size(); idx++){
+        pcl::PointXYZI pt = input_cloud->points[idx];
+        int col_i = ((horizon_num*horizon_accuracy/2) - atan2(pt.y, pt.x) * ANG) / horizon_accuracy;
+        idx_of_cols[col_i].push_back(idx);
+    }
+
+    for(int col = 0; col < idx_of_cols.size(); col++){
+        double min_dist = 420;
+        pcl::PointXYZI target_pt;
+
+        for(int i = 0; i < idx_of_cols[col].size(); i++){
+            int idx = idx_of_cols[col][i];
+            pcl::PointXYZI pt = input_cloud->points[idx];
+            double verticalAngle = atan2(pt.z, sqrt(pt.x * pt.x + pt.y * pt.y)) * 180 / M_PI;
+            double angle_dist = abs(verticalAngle - target_angle);
+            if(angle_dist < min_dist){
+                min_dist = angle_dist;
+                target_pt = pt;
+            }
+        }
+
+        if(min_dist < 420){
+            target_points->points.push_back(target_pt);
+        }
+    }
+    input_cloud->clear();
+    *input_cloud += *target_points;
+
+}
 
 int ransac_line_fitting(const pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud, int maxiter,
                         int consensus_thres, double dis_thres,
@@ -107,10 +190,10 @@ int ransac_line_fitting(const pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud, int
     return isNonFind;
 }
 
-void line_detect(pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud)
+int line_detect(pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud)
 {
     int maxiter = 700;
-    int consensus_thres = 20;
+    int consensus_thres = 5;
     double dis_thres = 0.02;
     int intensity = 0;
     while (in_cloud->size() > 5)
@@ -135,6 +218,8 @@ void line_detect(pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud)
         *in_cloud = *outlier_points;
         outlier_points->clear();
     }
+    int size = ransac_clouds.size();
+    return size;
 }
 
 Eigen::Vector2d get_intersection(Eigen::Vector4d lineParam1, Eigen::Vector4d lineParam2){
@@ -285,9 +370,22 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     ROS_INFO("round begin======");
 
     pcl::fromROSMsg(*point_msg, *input_cloud);
-    line_detect(input_cloud);
-    // pcl::toROSMsg(*lane_cloud, line_cloud_pub);
-    pcl::toROSMsg(*ransac_clouds[1], line_cloud_pub);
+
+    int size;
+    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    *filtered_cloud += *(position_filter(-7 - 0.5, 4 + 0.5, 0));
+    *filtered_cloud += *(position_filter(-7 - 0.5, 4 + 4.950 + 0.5, 0));
+    input_cloud->clear();
+    *input_cloud += *filtered_cloud;
+
+    vertical_angle_filter(0);
+    size = input_cloud->points.size();
+    ROS_INFO("size of input_cloud is %d", size);
+
+    int line_num = line_detect(input_cloud);
+    ROS_INFO("size of lines is %d", line_num);
+    pcl::toROSMsg(*lane_cloud, line_cloud_pub);
+    // pcl::toROSMsg(*ransac_clouds[1], line_cloud_pub);
     line_cloud_pub.header.stamp = ros::Time::now();
     line_cloud_pub.header.frame_id = "odom";
     pub_line_cloud.publish(line_cloud_pub);

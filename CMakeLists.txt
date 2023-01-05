@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(curling_detect)
  
-add_compile_options(-std=c++11)
+add_compile_options(-std=gnu++11)
+SET(CMAKE_CXX_FLAGS "-std=c++0x")
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS_RELEASE -O2)
  
