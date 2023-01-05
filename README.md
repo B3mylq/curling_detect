@@ -27,10 +27,10 @@ rosrun curling_detect prompt_graph
 rviz -d prompt_graph.rviz
 ```
 此时可以看到如下界面，\
-![](/src/curling_detect/img/promtp_graph.png)
+![](https://github.com/B3mylq/curling_detect/blob/main/img/promtp_graph.png)
 蓝色为基坐标系下冰壶场地图，绿色为点云选取范围，红色的为校准辅助线\
 请保证【点云选取范围内】除了箱子和地面没有其他干扰，移动激光雷达使箱子的两边沿尽量如图中所示贴近对准辅助线，使箱子接受激光扫面的四个面形如下图黄色点云所示。\
-![](/src/curling_detect/img/calibrate_example01.png)
+![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example01.png)
 目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平
 
 3. 新建一个终端启动校准节点自动定标
@@ -38,4 +38,4 @@ rviz -d prompt_graph.rviz
 rosrun curling_detect lidar_calibration
 ```
 终端发布齐次变换矩阵并将点云转到基坐标系下显示，如下图橙色点云所示\
-![](/src/curling_detect/img/calibrate_example02.png)
+![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example02.png)
