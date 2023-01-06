@@ -47,7 +47,7 @@ rosrun curling_detect lidar_calibration
 ![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example02.png)\
 __话题对照表__
 | 名称        | rviz类型   |  作用  |  源文件  |
-| --------   | -----:  | :----:  | :----: |
+| :--------:   | :-----:  | :----:  | :----: |
 | /ground_marker     | Marker |   显示基坐标系下的冰壶场     | prompt_graph.cpp |
 | /prompt_marker     |   Marker   |   显示雷达坐标系下关注的点云范围   | prompt_graph.cpp |
 | /calibrate_marker  |    Marker    |  显示标定箱辅助对位条  | prompt_graph.cpp |
