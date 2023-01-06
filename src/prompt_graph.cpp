@@ -71,15 +71,15 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "showline");
     ros::NodeHandle nh;
-    ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("ground_marker", 10);
-    ros::Publisher prompt_pub = nh.advertise<visualization_msgs::Marker>("prompt_marker", 10);
-    ros::Publisher calibrate_pub = nh.advertise<visualization_msgs::Marker>("calibrate_marker", 10);
+    ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("/ground_marker", 10);
+    ros::Publisher prompt_pub = nh.advertise<visualization_msgs::Marker>("/prompt_marker", 10);
+    ros::Publisher calibrate_pub = nh.advertise<visualization_msgs::Marker>("/calibrate_marker", 10);
     ros::Publisher test_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/calibrate_points", 100, true);
-    ros::Publisher tramsformed_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/transform_points", 100, true);
+    ros::Publisher tramsformed_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/hesai/pandar", 100, true);
     visualization_msgs::Marker line_list, prompt_list, calibrate_list;
     ros::Rate r(10);
 
-    line_list.header.frame_id = "odom";
+    line_list.header.frame_id = "Pandar64";
     line_list.header.stamp = ros::Time::now();
     line_list.ns = "lines";
     line_list.action = visualization_msgs::Marker::ADD;
@@ -271,13 +271,13 @@ int main(int argc, char **argv)
 
         pcl::toROSMsg(*test_cloud, pub_test_cloud);
         pub_test_cloud.header.stamp = ros::Time::now();
-        pub_test_cloud.header.frame_id = "odom";
+        pub_test_cloud.header.frame_id = "Pandar64";
         test_points_pub.publish(pub_test_cloud);
 
         pcl::toROSMsg(*trasformed_cloud, pub_test_cloud);
         pub_test_cloud.header.stamp = ros::Time::now();
-        pub_test_cloud.header.frame_id = "odom";
-        tramsformed_points_pub.publish(pub_test_cloud);
+        pub_test_cloud.header.frame_id = "Pandar64";
+        // tramsformed_points_pub.publish(pub_test_cloud);
 
         r.sleep();
     }

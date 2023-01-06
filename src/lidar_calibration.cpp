@@ -387,7 +387,7 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     pcl::toROSMsg(*lane_cloud, line_cloud_pub);
     // pcl::toROSMsg(*ransac_clouds[1], line_cloud_pub);
     line_cloud_pub.header.stamp = ros::Time::now();
-    line_cloud_pub.header.frame_id = "odom";
+    line_cloud_pub.header.frame_id = "Pandar64";
     pub_line_cloud.publish(line_cloud_pub);
 
     calibrate();
@@ -396,7 +396,7 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     check_cloud = points_transform(input_cloud, transform_matrix);
     pcl::toROSMsg(*check_cloud, check_cloud_pub);
     check_cloud_pub.header.stamp = ros::Time::now();
-    check_cloud_pub.header.frame_id = "odom";
+    check_cloud_pub.header.frame_id = "Pandar64";
     pub_check_cloud.publish(check_cloud_pub);
 
     lane_cloud->clear();
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "lidar_calibrate");
     ros::NodeHandle nh;
 
-    ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>("/transform_points", 100, CalibrateCallback);
+    ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>("/hesai/pandar", 100, CalibrateCallback);
     pub_line_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/line_cloud", 100, true);
     pub_check_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/check_cloud", 100, true);
 

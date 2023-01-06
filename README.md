@@ -3,8 +3,8 @@
 ### 激光雷达标定与冰壶位置检测
 - [x] 激光雷达位置标定
 - [x] 检测冰壶位置
-- [] 卡尔曼滤波融入冰壶轨迹检测
-- [] 优化屎山，整合头文件统一调参位置
+- [ ] 卡尔曼滤波融入冰壶轨迹检测
+- [ ] 优化屎山，整合头文件统一调参位置
 ---
 ### 1、编译配置
 打开终端，创建或进入ROS工作空间，执行以下命令
@@ -44,8 +44,15 @@ rviz -d prompt_graph.rviz
 rosrun curling_detect lidar_calibration
 ```
 终端发布齐次变换矩阵并将点云转到基坐标系下显示，如下图橙色点云所示
-![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example02.png)
-
+![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example02.png)\
+__话题对照表__
+| 名称        | rviz类型   |  作用  |  源文件  |
+| --------   | -----:  | :----:  | :----: |
+| /ground_marker     | Marker |   显示基坐标系下的冰壶场     | prompt_graph.cpp |
+| /prompt_marker     |   Marker   |   显示雷达坐标系下关注的点云范围   | prompt_graph.cpp |
+| /calibrate_marker  |    Marker    |  显示标定箱辅助对位条  | prompt_graph.cpp |
+| /line_cloud  |    PointCloud2    |  以不同颜色显示标定箱监测到的三条直线点  | lidar_calibration.cpp |
+| /check_cloud  |    PointCloud2    |  将雷达点云投射到冰壶场基坐标系下的结果，用以验证标定效果  | lidar_calibration.cpp |
 ---
 ### 3、冰壶检测
 1. 新建终端，启动【禾赛64线】激光雷达节点
