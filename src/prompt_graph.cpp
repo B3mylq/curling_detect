@@ -277,7 +277,7 @@ int main(int argc, char **argv)
         pcl::toROSMsg(*trasformed_cloud, pub_test_cloud);
         pub_test_cloud.header.stamp = ros::Time::now();
         pub_test_cloud.header.frame_id = "Pandar64";
-        // tramsformed_points_pub.publish(pub_test_cloud);
+        tramsformed_points_pub.publish(pub_test_cloud);
 
         r.sleep();
     }

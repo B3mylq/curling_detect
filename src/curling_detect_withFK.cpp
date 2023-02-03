@@ -26,22 +26,26 @@
 #include <pcl_ros/filters/filter.h>
 #include <pcl_ros/point_cloud.h>
 
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Geometry>
+#include "kf_filter/kalman.h"
 
 using namespace std;
 
-Eigen::Isometry3d transform_matrix = Eigen::Isometry3d::Identity();
 geometry_msgs::PoseStamped curlingPose;
-nav_msgs::Path curlingPath, transformedCurlingPath;
+nav_msgs::Path curlingPath;
+geometry_msgs::PoseStamped filteredPose;
+nav_msgs::Path filteredPath;
+geometry_msgs::PoseStamped observedPose;
+nav_msgs::Path observedPath;
 float x_max, x_min, y_max, y_min, z_max, z_min, r_max, r_min;
+int total_count = 0, detected_count = 0, kf_params_case = 0;
+bool is_detected;
 
 ros::Publisher pub_filtered_cloud;
 ros::Publisher pub_clustered_cloud;
 ros::Publisher pub_curling_pose;
 ros::Publisher pub_curling_path;
-ros::Publisher pub_transformed_curling_path;
+ros::Publisher pub_observed_pose;
+ros::Publisher pub_observed_path;
 sensor_msgs::PointCloud2 point_in;
 sensor_msgs::PointCloud2 pub_pc;
 
@@ -104,6 +108,18 @@ std::vector<pcl::PointIndices> cluster_indices;
 pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
 // 聚类结果的储存容器
 vector<pcl::PointXYZ> central_poses;
+// 卡尔曼滤波中使用的变量
+double dt = 0.1;
+Eigen::VectorXd x;
+Eigen::MatrixXd P0;
+Eigen::MatrixXd Q;
+Eigen::MatrixXd R;
+Eigen::MatrixXd A;
+Eigen::MatrixXd B;
+Eigen::MatrixXd H;
+Eigen::VectorXd z0;
+Eigen::VectorXd u_v;
+Kalman ka(9, 3, 9);
 
 void curling_init()
 {
@@ -112,12 +128,12 @@ void curling_init()
     curlingPose.pose.position.x = 5;
     curlingPose.pose.position.y = 1;
     curlingPose.pose.position.z = 0;
-
     curlingPath.header = curlingPose.header;
     curlingPath.poses.clear();
 
-    transformedCurlingPath.header = curlingPose.header;
-    transformedCurlingPath.poses.clear();
+    observedPose = curlingPose;
+    observedPath.header = curlingPose.header;
+    observedPath.poses.clear();
 
     x_max = x_min = y_max = y_min = r_max = r_min = 1;
     z_max = 0.4;
@@ -129,6 +145,100 @@ void curling_init()
     seg.setMethodType(pcl::SAC_RANSAC);
     seg.setMaxIterations(100);
     seg.setDistanceThreshold(0.02);
+
+    // x代表状态量
+    x.resize(9);
+    x.setZero();
+    x(0) = curlingPose.pose.position.x;
+    x(3) = curlingPose.pose.position.y;
+    // P0代表状态量分布的协方差矩阵
+    P0.resize(9, 9);
+    P0.setIdentity();
+    // Q代表状态方程预测结果的协方差矩阵
+    Q.resize(9, 9);
+    Q.setIdentity();
+    // R代表观测结果的协方差矩阵
+    R.resize(3, 3);
+    R.setIdentity();
+    R(2, 2) = 100;
+    // A代表状态转移矩阵，X(k) = A*X(k-1)
+    A.resize(9, 9);
+    A.setIdentity();
+    B.resize(9, 9);
+    B.setIdentity();
+    // H代表观测矩阵，z0 = H*X(k)
+    H.resize(3, 9);
+    H.setZero();
+    H(0, 0) = H(1, 3) = H(2, 6) = 1;
+    // z0是观测量x, y, z
+    z0.resize(3);
+    u_v.resize(9, 1);
+    u_v.setZero();
+    ka.Init_Par(x, P0, R, Q, A, B, H, u_v);
+}
+
+void set_kalman_params(int params_case, double delta_t)
+{
+    ka.m_x[1] = ka.m_x[4] = 0;
+    int i = 1;
+    while (i <= 5)
+    {
+        int pose_id = observedPath.poses.size() - i;
+        if (pose_id - 4 < 0)
+        {
+            break;
+        }
+        double duration = observedPath.poses[pose_id].header.stamp.toSec() - observedPath.poses[pose_id - 4].header.stamp.toSec();
+        ka.m_x[1] += (observedPath.poses[pose_id].pose.position.x - observedPath.poses[pose_id - 4].pose.position.x) / duration;
+        ka.m_x[4] += (observedPath.poses[pose_id].pose.position.y - observedPath.poses[pose_id - 4].pose.position.y) / duration;
+        cout << "check duration :" << duration << " check id " << pose_id << endl;
+        i++;
+    }
+    if (i > 1)
+    {
+        ka.m_x[1] = ka.m_x[1] / (i - 1);
+        ka.m_x[4] = ka.m_x[4] / (i - 1);
+    }
+
+    if (params_case == 0)
+    {
+        // 检测到的前三帧，不信赖预测，信赖观测
+        Q.setIdentity();
+        Q = Q * 10000;
+        R.setIdentity();
+        R = R * 0.01;
+    }
+    else if (params_case == 1)
+    {
+        ROS_INFO("starting check=====");
+    }
+    else if (params_case == 2)
+    {
+        // 检测到的第四帧以后且检测到冰壶
+        Q.setIdentity();
+        Q(2, 2) = Q(5, 5) = Q(6, 6) = Q(7, 7) = Q(8, 8) = 0.0001;
+        Q(1, 1) = Q(4, 4) = 0.01;
+        R.setIdentity();
+        R(2, 2) = 100;
+    }
+    else if (params_case == 3)
+    {
+        // 检测到的第四帧以后且未检测到冰壶
+        Q.setIdentity();
+        Q = Q * 0.01;
+        R.setIdentity();
+        R = R * 100;
+    }
+    else
+    {
+        ROS_WARN("incorrect kf case param");
+    }
+
+    ka.m_x[2] = ka.m_x[5] = 0;
+    A(0, 1) = A(3, 4) = A(6, 7) = A(1, 2) = A(4, 5) = A(7, 8) = delta_t;
+    // A(0, 2) = A(3, 5) = A(6, 8) = delta_t * delta_t / 2;
+    A(0, 2) = A(3, 5) = A(6, 8) = 0;
+    ka.Update_Par(R, Q, A);
 }
 
 void position_filter()
@@ -355,17 +465,21 @@ void cluster_extract()
     }
 }
 
-void get_curling_pose()
+void get_observed_pose()
 {
-    pcl::PointXYZ last_pose;
+    is_detected = false;
+    pcl::PointXYZ last_pose, last_observed_pose;
     last_pose.x = curlingPose.pose.position.x;
     last_pose.y = curlingPose.pose.position.y;
     last_pose.z = curlingPose.pose.position.z;
+    last_observed_pose.x = observedPose.pose.position.x;
+    last_observed_pose.y = observedPose.pose.position.y;
+    last_observed_pose.z = observedPose.pose.position.z;
 
     if (central_poses.size() == 0)
     {
         ROS_WARN("fail to detect curling at %f", ros::Time::now().toSec());
-        pub_curling_pose.publish(curlingPose);
+        pub_observed_pose.publish(observedPose);
         return;
     }
 
@@ -376,10 +490,10 @@ void get_curling_pose()
         if (current_distance < min_distance)
         {
             min_distance = current_distance;
-            curlingPose.header.stamp = ros::Time::now();
-            curlingPose.pose.position.x = central_poses[i].x;
-            curlingPose.pose.position.y = central_poses[i].y;
-            curlingPose.pose.position.z = central_poses[i].z;
+            observedPose.header.stamp = ros::Time::now();
+            observedPose.pose.position.x = central_poses[i].x;
+            observedPose.pose.position.y = central_poses[i].y;
+            observedPose.pose.position.z = central_poses[i].z;
         }
     }
 
@@ -387,36 +501,67 @@ void get_curling_pose()
     if ((min_distance / time_interval) > 5)
     {
         ROS_WARN("fail to track curling at %f, speed: %f", ros::Time::now().toSec(), min_distance / time_interval);
-        curlingPose.header.stamp = ros::Time::now();
-        curlingPose.pose.position.x = last_pose.x;
-        curlingPose.pose.position.y = last_pose.y;
-        curlingPose.pose.position.z = last_pose.z;
+        observedPose.header.stamp = ros::Time::now();
+        observedPose.pose.position.x = last_observed_pose.x;
+        observedPose.pose.position.y = last_observed_pose.y;
+        observedPose.pose.position.z = last_observed_pose.z;
     }
     else
     {
-        curlingPath.header.stamp = ros::Time::now();
-        curlingPath.poses.push_back(curlingPose);
         ROS_INFO("success. ");
+        detected_count++;
+        is_detected = true;
+        observedPath.header.stamp = ros::Time::now();
+        observedPath.poses.push_back(observedPose);
     }
     // ROS_INFO("min distance is %f", min_distance);
-    pub_curling_pose.publish(curlingPose);
-    pub_curling_path.publish(curlingPath);
+    pub_observed_pose.publish(observedPose);
+    pub_observed_path.publish(observedPath);
 }
 
-void transform_curling_path()
+void get_curling_pose()
 {
-    transformedCurlingPath = curlingPath;
-    for (int i = 0; i < transformedCurlingPath.poses.size(); i++)
+    if (detected_count <= 3)
     {
-        Eigen::Vector3d temp_pose(transformedCurlingPath.poses[i].pose.position.x,
-                                  transformedCurlingPath.poses[i].pose.position.y,
-                                  transformedCurlingPath.poses[i].pose.position.z);
-        Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
-        transformedCurlingPath.poses[i].pose.position.x = transformed_pose[0];
-        transformedCurlingPath.poses[i].pose.position.y = transformed_pose[1];
-        transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
+        dt = 0.1;
+        kf_params_case = 0;
     }
-    pub_transformed_curling_path.publish(transformedCurlingPath);
+    else if (detected_count == 4)
+    {
+        dt = 0.1;
+        kf_params_case = 1;
+    }
+    else if (detected_count > 4 && is_detected)
+    {
+        dt = ros::Time::now().toSec() - curlingPath.poses[curlingPath.poses.size() - 1].header.stamp.toSec();
+        kf_params_case = 2;
+    }
+    else if (detected_count > 4 && is_detected == false)
+    {
+        dt = ros::Time::now().toSec() - curlingPath.poses[curlingPath.poses.size() - 1].header.stamp.toSec();
+        kf_params_case = 3;
+    }
+    else
+    {
+        dt = 0.1;
+        kf_params_case = 10;
+    }
+
+    set_kalman_params(kf_params_case, dt);
+    z0(0) = observedPose.pose.position.x;
+    z0(1) = observedPose.pose.position.y;
+    z0(2) = observedPose.pose.position.z;
+    ka.Kalman_Process(z0);
+    curlingPose.header.stamp = ros::Time::now();
+    curlingPose.pose.position.x = ka.m_x[0];
+    curlingPose.pose.position.y = ka.m_x[3];
+    curlingPose.pose.position.z = ka.m_x[6];
+    curlingPath.header.stamp = ros::Time::now();
+    curlingPath.poses.push_back(curlingPose);
+
+    pub_curling_pose.publish(curlingPose);
+    pub_curling_path.publish(curlingPath);
+    cout << "ka.m_x = " << ka.m_x.transpose() << "\n kf_case: " << kf_params_case << "delta t: " << dt << endl;
 }
 
 void cloud_pub()
@@ -447,7 +592,7 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     position_filter();
 
     double distance = sqrt(pow(curlingPose.pose.position.x, 2) + pow(curlingPose.pose.position.y, 2) + pow(curlingPose.pose.position.z, 2));
-    if (distance < 18)
+    if (distance < 20)
     {
         plane_segment();
     }
@@ -458,11 +603,16 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     cluster_extract();
 
-    get_curling_pose();
+    get_observed_pose();
 
-    transform_curling_path();
+    if (detected_count)
+    {
+        get_curling_pose();
+    }
 
     reset();
+
+    total_count++;
 }
 
 int main(int argc, char *argv[])
@@ -470,37 +620,13 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "curling_detection");
     ros::NodeHandle nh;
     curling_init();
-    bool calibrate_flag = nh.param("lidar_calibrate_flag", false);
-    if (calibrate_flag)
-    {
-        vector<double> temp_tf_params;
-        vector<double> tf_params = nh.param("lidar_tf_params", temp_tf_params);
-        if (tf_params.size() != 16)
-        {
-            ROS_WARN("incorrect number of tf params");
-        }
-        else
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                for (int j = 0; j < 4; j++)
-                {
-                    transform_matrix(i, j) = tf_params[i + j];
-                }
-            }
-        }
-    }
-    else
-    {
-        ROS_WARN("no transform matrix received");
-        transform_matrix = Eigen::Isometry3d::Identity();
-    }
 
     pub_filtered_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/filtered_cloud", 100, true);
     pub_clustered_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/clustered_cloud", 100, true);
     pub_curling_pose = nh.advertise<geometry_msgs::PoseStamped>("/curling_pose", 10, true);
     pub_curling_path = nh.advertise<nav_msgs::Path>("/curling_path", 10, true);
-    pub_transformed_curling_path = nh.advertise<nav_msgs::Path>("/transformed_curling_path", 10, true);
+    pub_observed_pose = nh.advertise<geometry_msgs::PoseStamped>("/observed_pose", 10, true);
+    pub_observed_path = nh.advertise<nav_msgs::Path>("/observed_path", 10, true);
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CurlingDetectCallback);
 
     ros::spin();

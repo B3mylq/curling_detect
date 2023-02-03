@@ -67,10 +67,12 @@ public:
     // void Update(Eigen::Matrix<double,2,6> &H,Eigen::Matrix<double,2,1> z_meas);
 
     void Init_Par(Eigen::VectorXd &x, Eigen::MatrixXd &P, Eigen::MatrixXd &R, Eigen::MatrixXd &Q, Eigen::MatrixXd &A, Eigen::MatrixXd &B, Eigen::MatrixXd &H, Eigen::VectorXd &u);
+    void Update_Par(Eigen::MatrixXd &R, Eigen::MatrixXd &Q, Eigen::MatrixXd &A);
     void Predict_State();
     void Predict_Cov();
     Eigen::VectorXd Mea_Resd(Eigen::VectorXd &z);
     Eigen::MatrixXd Cal_Gain();
     void Update_State();
     void Update_Cov();
+    void Kalman_Process(Eigen::VectorXd z);
 };

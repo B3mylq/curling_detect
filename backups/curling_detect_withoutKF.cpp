@@ -26,22 +26,16 @@
 #include <pcl_ros/filters/filter.h>
 #include <pcl_ros/point_cloud.h>
 
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Geometry>
-
 using namespace std;
 
-Eigen::Isometry3d transform_matrix = Eigen::Isometry3d::Identity();
 geometry_msgs::PoseStamped curlingPose;
-nav_msgs::Path curlingPath, transformedCurlingPath;
+nav_msgs::Path curlingPath;
 float x_max, x_min, y_max, y_min, z_max, z_min, r_max, r_min;
 
 ros::Publisher pub_filtered_cloud;
 ros::Publisher pub_clustered_cloud;
 ros::Publisher pub_curling_pose;
 ros::Publisher pub_curling_path;
-ros::Publisher pub_transformed_curling_path;
 sensor_msgs::PointCloud2 point_in;
 sensor_msgs::PointCloud2 pub_pc;
 
@@ -115,9 +109,6 @@ void curling_init()
 
     curlingPath.header = curlingPose.header;
     curlingPath.poses.clear();
-
-    transformedCurlingPath.header = curlingPose.header;
-    transformedCurlingPath.poses.clear();
 
     x_max = x_min = y_max = y_min = r_max = r_min = 1;
     z_max = 0.4;
@@ -403,22 +394,6 @@ void get_curling_pose()
     pub_curling_path.publish(curlingPath);
 }
 
-void transform_curling_path()
-{
-    transformedCurlingPath = curlingPath;
-    for (int i = 0; i < transformedCurlingPath.poses.size(); i++)
-    {
-        Eigen::Vector3d temp_pose(transformedCurlingPath.poses[i].pose.position.x,
-                                  transformedCurlingPath.poses[i].pose.position.y,
-                                  transformedCurlingPath.poses[i].pose.position.z);
-        Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
-        transformedCurlingPath.poses[i].pose.position.x = transformed_pose[0];
-        transformedCurlingPath.poses[i].pose.position.y = transformed_pose[1];
-        transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
-    }
-    pub_transformed_curling_path.publish(transformedCurlingPath);
-}
-
 void cloud_pub()
 {
     pcl::toROSMsg(*cloud_filtered, pub_pc);
@@ -460,8 +435,6 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     get_curling_pose();
 
-    transform_curling_path();
-
     reset();
 }
 
@@ -470,37 +443,11 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "curling_detection");
     ros::NodeHandle nh;
     curling_init();
-    bool calibrate_flag = nh.param("lidar_calibrate_flag", false);
-    if (calibrate_flag)
-    {
-        vector<double> temp_tf_params;
-        vector<double> tf_params = nh.param("lidar_tf_params", temp_tf_params);
-        if (tf_params.size() != 16)
-        {
-            ROS_WARN("incorrect number of tf params");
-        }
-        else
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                for (int j = 0; j < 4; j++)
-                {
-                    transform_matrix(i, j) = tf_params[i + j];
-                }
-            }
-        }
-    }
-    else
-    {
-        ROS_WARN("no transform matrix received");
-        transform_matrix = Eigen::Isometry3d::Identity();
-    }
 
     pub_filtered_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/filtered_cloud", 100, true);
     pub_clustered_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/clustered_cloud", 100, true);
     pub_curling_pose = nh.advertise<geometry_msgs::PoseStamped>("/curling_pose", 10, true);
     pub_curling_path = nh.advertise<nav_msgs::Path>("/curling_path", 10, true);
-    pub_transformed_curling_path = nh.advertise<nav_msgs::Path>("/transformed_curling_path", 10, true);
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CurlingDetectCallback);
 
     ros::spin();

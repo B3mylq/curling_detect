@@ -36,7 +36,7 @@ include_directories(
  
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-add_library(kalman /home/b3mylq/ROS_ws/pcl_ws/src/curling_detect/include/kf_filter/kalman.cpp)
+add_library(filter /home/b3mylq/ROS_ws/pcl_ws/src/curling_detect/include/kf_filter/kalman.cpp)
  
 # add_executable(depth_make src/depth_make.cpp) 
 # target_link_libraries(depth_make ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES}) 
@@ -59,7 +59,7 @@ target_link_libraries(curling_detect ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 add_dependencies(curling_detect beginner_tutorials_generate_messages_cpp) 
 
 add_executable(kalman_test src/kalman_test.cpp) 
-target_link_libraries(kalman_test ${catkin_LIBRARIES} ${PCL_LIBRARIES} kalman) 
+target_link_libraries(kalman_test ${catkin_LIBRARIES} ${PCL_LIBRARIES} filter) 
 add_dependencies(kalman_test beginner_tutorials_generate_messages_cpp) 
 
 add_executable(prompt_graph src/prompt_graph.cpp) 

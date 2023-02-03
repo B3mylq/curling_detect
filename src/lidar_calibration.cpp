@@ -36,7 +36,10 @@ ros::Publisher pub_check_cloud;
 sensor_msgs::PointCloud2 line_cloud_pub;
 sensor_msgs::PointCloud2 check_cloud_pub;
 
-Eigen::Isometry3d transform_matrix;
+Eigen::Isometry3d transform_matrix = Eigen::Isometry3d::Identity();
+
+vector<double> tf_params;
+bool calibrate_flag = false;
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr position_filter(double x, double y, double z)
 {
@@ -363,6 +366,8 @@ void calibrate()
     transform_matrix = get_translation(transform_matrix, vectorBefore, vectorAfter);
     std::cout << "transform_matrix: " << std::endl
               << transform_matrix.matrix() << std::endl;
+
+    calibrate_flag = true;
 }
 
 void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
@@ -413,27 +418,56 @@ int main(int argc, char *argv[])
     pub_line_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/line_cloud", 100, true);
     pub_check_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/check_cloud", 100, true);
 
-    ros::spin();
+    // ros::spin();
+    while (ros::ok())
+    {  
+        ros::spinOnce();
 
-    Eigen::Matrix3d rotMatrix;
-    Eigen::Vector3d vectorBefore(1, 0, 0);
-    Eigen::Vector3d vectorAfter(sqrt(2), sqrt(2), 0);
+        if(calibrate_flag){
+            std::cout << "transform_matrix: " << std::endl
+              << transform_matrix.matrix() << std::endl;
+            break;
+        }
+    }
+    
+    Eigen::Matrix4d tf_matrix = transform_matrix.matrix();
+    for(int i = 0; i < 4; i++){
+        for(int j = 0; j < 4; j++){
+            tf_params.push_back(tf_matrix(i,j));
+        }
+    }
+    ros::param::set("lidar_tf_params",tf_params);
+    ros::param::set("lidar_calibrate_flag",calibrate_flag);
 
-    rotMatrix = Eigen::Quaterniond::FromTwoVectors(vectorBefore, vectorAfter).toRotationMatrix();
-    cout << "Transform matrix = \n"
-         << rotMatrix.matrix() << endl;
+    Eigen::Isometry3d test_tf;
+    for(int i = 0; i < 4; i++){
+        for(int j = 0; j < 4; j++){
+            test_tf(i,j) = tf_params[i+j];
+        }
+    }
+    std::cout << "test_tf: " << std::endl
+              << test_tf.matrix() << std::endl;
 
-    Eigen::Vector3d axi1Before(1, 1, 0);
-    Eigen::Vector3d axi1After(0, 0, 0);
-    axi1After = rotMatrix * axi1Before;
-    cout << "(1,1,0) after rotation = " << axi1After.transpose() << endl;
 
-    Eigen::Vector3d t(0, 1, 0);
-    Eigen::Isometry3d homo_tf = Eigen::Isometry3d::Identity(); // T_M3是一个4x4的矩阵
-    homo_tf.rotate(rotMatrix);
-    homo_tf.pretranslate(t);
-    std::cout << "homo_tf: " << std::endl
-              << homo_tf.matrix() << std::endl;
+    // Eigen::Matrix3d rotMatrix;
+    // Eigen::Vector3d vectorBefore(1, 0, 0);
+    // Eigen::Vector3d vectorAfter(sqrt(2), sqrt(2), 0);
+
+    // rotMatrix = Eigen::Quaterniond::FromTwoVectors(vectorBefore, vectorAfter).toRotationMatrix();
+    // cout << "Transform matrix = \n"
+    //      << rotMatrix.matrix() << endl;
+
+    // Eigen::Vector3d axi1Before(1, 1, 0);
+    // Eigen::Vector3d axi1After(0, 0, 0);
+    // axi1After = rotMatrix * axi1Before;
+    // cout << "(1,1,0) after rotation = " << axi1After.transpose() << endl;
+
+    // Eigen::Vector3d t(0, 1, 0);
+    // Eigen::Isometry3d homo_tf = Eigen::Isometry3d::Identity(); // T_M3是一个4x4的矩阵
+    // homo_tf.rotate(rotMatrix);
+    // homo_tf.pretranslate(t);
+    // std::cout << "homo_tf: " << std::endl
+    //           << homo_tf.matrix() << std::endl;
 
     return 0;
 }

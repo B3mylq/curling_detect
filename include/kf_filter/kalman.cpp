@@ -12,6 +12,13 @@ void Kalman::Init_Par(Eigen::VectorXd &x, Eigen::MatrixXd &P, Eigen::MatrixXd &R
     m_u = u;
 }
 
+void Kalman::Update_Par(Eigen::MatrixXd &R, Eigen::MatrixXd &Q, Eigen::MatrixXd &A)
+{
+    m_R = R;
+    m_Q = Q;
+    m_A = A;
+}
+
 void Kalman::Predict_State()
 {
     Eigen::VectorXd tmp_state = m_A * m_x + m_B * m_u;
@@ -49,4 +56,14 @@ void Kalman::Update_Cov()
     Eigen::MatrixXd kal_gain = Cal_Gain();
     Eigen::MatrixXd tmp_mat = kal_gain * m_H;
     m_P = (m_iden_mat - tmp_mat) * m_P;
+}
+
+void Kalman::Kalman_Process(Eigen::VectorXd z)
+{
+    this->Predict_State();
+    this->Predict_Cov();
+    this->Mea_Resd(z);
+    this->Cal_Gain();
+    this->Update_State();
+    this->Update_Cov();
 }

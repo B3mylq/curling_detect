@@ -60,8 +60,8 @@ int main(int argc, char *argv[])
 
     x.resize(9);
     x.setZero();
-    x(2) = 1;
-    x(5) = 0.6;
+    x(1) = 1;
+    x(4) = 0.6;
 
     P0.resize(9, 9);
     P0.setIdentity();
@@ -140,12 +140,13 @@ int main(int argc, char *argv[])
         z0(1) = y_obser;
         z0(2) = z_obser;
         cout << "the " << (t/dt + 1) << " th time predict" << endl;
-        ka.Predict_State();
-        ka.Predict_Cov();
-        ka.Mea_Resd(z0);
-        ka.Cal_Gain();
-        ka.Update_State();
-        ka.Update_Cov();
+        // ka.Predict_State();
+        // ka.Predict_Cov();
+        // ka.Mea_Resd(z0);
+        // ka.Cal_Gain();
+        // ka.Update_State();
+        // ka.Update_Cov();
+        ka.Kalman_Process(z0);
         x_res = ka.m_x[0];
         y_res = ka.m_x[3];
         z_res = ka.m_x[6];

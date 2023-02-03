@@ -1,0 +1,19 @@
+<launch>
+    <!-- 主机ip地址 -->
+    <param name="master_ip_address" value="192.168.101.3" type="str" />
+    <!-- 从机(激光雷达连接的PC)ip地址 -->
+    <param name="node_ip_address" value="192.168.17.128" type="str" />
+    <!-- 主机发送指令的端口号 -->
+    <param name="master_command_port" value="1145" type="int" />
+    <!-- 主机接收数据的端口号 -->
+    <param name="master_receive_port" value="4514" type="int" />
+    <!-- 主机表达“开始录制”的命令 -->
+    <param name="master_begin_command" value="start" type="str" />
+    <!-- 主机表达“结束录制”的命令 -->
+    <param name="master_end_command" value="stop" type="str" />
+
+
+    <node pkg="curling_detect" type="udp_receive_command.py" name="udp_command" output="screen" />
+    <node pkg="curling_detect" type="udp_send_path.py" name="udp_send" output="screen" />
+
+</launch>

@@ -4,7 +4,11 @@
 - [x] 激光雷达位置标定
 - [x] 检测冰壶位置
 - [ ] 卡尔曼滤波融入冰壶轨迹检测
-- [ ] 优化屎山，整合头文件统一调参位置
+- [ ] 优化屎山，整合头文件统一调参位置\
+
+更新日志2023/2/3：封装socket通信模块，冰壶位置的实时卡尔曼滤波由于程序时间计算上有bug未解决而暂时未更新
+
+
 ---
 ### 1、编译配置
 打开终端，创建或进入ROS工作空间，执行以下命令
@@ -79,3 +83,19 @@ source devel/setup.bash
 rosrun curling_detect curling_detect
 ```
 此时能看到冰壶上出现红色odometry箭头，表示检测到冰壶位置
+
+---
+### 4、socket收发
+1. 配置python文件权限：终端中进入curling_detect/scripts/文件夹
+```bash
+cd 【ROS工作空间】/src/curling_detect/scripts
+chmod +x *.py
+```
+2. 配置网络参数：打开curling_detect/launch/socket_control.launch文件，关注“<param” 开头的几行，根据注释在“value=”选项下配置网络参数
+3. 主机解码方法：接收方的解码方法在curling_detect/scripts/udp_get_pose.py文件中，打开该文件，在main函数前修改网络参数(参数含义与4.2中参数相同)，之后可以复制到主机上运行
+4. 运行socket收发模块：新建终端运行如下命令。
+```bash
+roslaunch curling_detect socket_control.launch
+```
+&emsp;&emsp;此时从机进入等待发送的模式，在收到激光雷达检测程序发送的Path后，通过主机向从机发送“start”命令从机对主机转发Path，发送“stop”停止转发。\
+&emsp;&emsp;主机的命令可以在4.2中更改，但先不要使用中文！
