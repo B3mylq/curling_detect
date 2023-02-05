@@ -7,10 +7,12 @@
     <param name="master_command_port" value="1145" type="int" />
     <!-- 主机接收数据的端口号 -->
     <param name="master_receive_port" value="4514" type="int" />
+    <!-- 主机表达“开始发送数据”的命令 -->
+    <param name="master_pose_send_command" value="SR" type="str" />
     <!-- 主机表达“开始录制”的命令 -->
-    <param name="master_begin_command" value="start" type="str" />
+    <param name="master_begin_record_command" value="LS" type="str" />
     <!-- 主机表达“结束录制”的命令 -->
-    <param name="master_end_command" value="stop" type="str" />
+    <param name="master_end_record_command" value="LE" type="str" />
 
 
     <node pkg="curling_detect" type="udp_receive_command.py" name="udp_command" output="screen" />

@@ -180,7 +180,7 @@ void curling_init()
     file_name.pop_back();
     pathbag_filename = dir_path + file_path + file_name + ".bag";
     cout << "bag stored as: " << pathbag_filename << endl;
-    pathBag.open(pathbag_filename,rosbag::BagMode::Write);
+    // pathBag.open(pathbag_filename,rosbag::BagMode::Write);
 }
 
 void position_filter()
@@ -469,7 +469,7 @@ void transform_curling_path()
         transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
     }
     pub_transformed_curling_path.publish(transformedCurlingPath);
-    pathBag.write("/transformed_curling_path",ros::Time::now(),transformedCurlingPath);
+    // pathBag.write("/transformed_curling_path",ros::Time::now(),transformedCurlingPath);
 }
 
 void cloud_pub()
@@ -558,7 +558,7 @@ int main(int argc, char *argv[])
 
     ros::spin();
 
-    pathBag.close();
+    // pathBag.close();
 
     return 0;
 }

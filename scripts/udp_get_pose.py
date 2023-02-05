@@ -34,11 +34,12 @@ if __name__ == "__main__":
         path_vector = rs_msg.split("|")
         print(path_vector)
 
-        stamp = float(path_vector[0])
-        x = float(path_vector[1])
-        y = float(path_vector[2])
-        z = float(path_vector[3])
-        print(x)
+        if(len(path_vector) == 4):
+            stamp = float(path_vector[0])
+            x = float(path_vector[1])
+            y = float(path_vector[2])
+            z = float(path_vector[3])
+            print(x)
 
         # rate.sleep()
 

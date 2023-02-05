@@ -7,7 +7,7 @@
 - [ ] 优化屎山，整合头文件统一调参位置
 
 更新日志2023/2/3：封装socket通信模块，冰壶位置的实时卡尔曼滤波由于程序时间计算上有bug未解决而暂时未更新\
-更新日志2023/2/5：更新本地记录功能，详见3.4：检测结果记录。
+更新日志2023/2/5：更新本地记录功能，详见4.4
 
 
 ---
@@ -85,7 +85,6 @@ rosrun curling_detect curling_detect
 ```
 &emsp;&emsp;此时能看到冰壶上出现红色odometry箭头，表示检测到冰壶位置
 
-4. 检测结果记录：每次运行curling_detect.cpp功能会在curling_detect/records/rosbags/下记录检测到路径的rosbag，文件名为检测开始时间的【格林威治(伦敦)时间】。实验检测rosbag的储存空间小于5MB/分钟。
 
 ---
 ### 4、socket收发
@@ -100,5 +99,11 @@ chmod +x *.py
 ```bash
 roslaunch curling_detect socket_control.launch
 ```
-&emsp;&emsp;此时从机进入等待发送的模式，在收到激光雷达检测程序发送的Path后，通过主机向从机发送“start”命令从机对主机转发Path，发送“stop”停止转发。\
+&emsp;&emsp;此时从机进入等待发送的模式，在收到激光雷达检测程序发送的Path后，主机发送以下命令控制从机的通讯内容。
+| 命令        | 作用   |
+| :--------:   | :-----:  |
+| SR     | 从机回复“===lidar start sending pose msg===”，并开始向主机发送冰壶位置信息 |
+| LS     |   从机回复“===lidar start recording path msg===”，并开始在curling_detect/records/rosbags/下记录检测到路径的rosbag，文件名为受到“LS”命令的【北京时间】。   |
+| LE  |    从机回复“===lidar stop recording path msg===”，并停止记录冰壶轨迹信息  |    
+
 &emsp;&emsp;主机的命令可以在4.2中更改，但先不要使用中文！
