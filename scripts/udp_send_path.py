@@ -43,21 +43,29 @@ def sendPath(curling_path):
     global udp_send_flag, record_stop_flag, record_start_flag, bag_created
     global pathBag
     global master_ip_address, master_receive_port
-
-    pose_stamped = []
-    if(len(curling_path.poses) > 0):
-        pose_stamped.append(str(curling_path.poses[-1].header.stamp.to_sec()))
-        pose_stamped.append(str(curling_path.poses[-1].pose.position.x))
-        pose_stamped.append(str(curling_path.poses[-1].pose.position.y))
-        pose_stamped.append(str(curling_path.poses[-1].pose.position.z))
-    last_pose = "|".join(pose_stamped)
+ 
+    path_list = []
+    # if(len(curling_path.poses) > 0):
+    #     pose_stamped.append(str(curling_path.poses[-1].header.stamp.to_sec()))
+    #     pose_stamped.append(str(curling_path.poses[-1].pose.position.x))
+    #     pose_stamped.append(str(curling_path.poses[-1].pose.position.y))
+    #     pose_stamped.append(str(curling_path.poses[-1].pose.position.z))
+    for i in range(len(curling_path.poses)):
+        pose_stamped = []
+        pose_stamped.append(str(curling_path.poses[i].header.stamp.to_sec()))
+        pose_stamped.append(str(curling_path.poses[i].pose.position.x))
+        pose_stamped.append(str(curling_path.poses[i].pose.position.y))
+        pose_stamped.append(str(curling_path.poses[i].pose.position.z))
+        last_pose = "|".join(pose_stamped)
+        path_list.append(last_pose)
+    path = "-".join(path_list)
 
     #目标IP 和端口，元组类型
     ip_adders=(master_ip_address,master_receive_port)
     # ip_adders=('10.182.249.139',7766)
     
     if udp_send_flag == 1:
-        udp_socket.sendto(last_pose.encode('utf-8'),ip_adders)
+        udp_socket.sendto(path.encode('utf-8'),ip_adders)
         print(last_pose)
     if record_start_flag == 1:
         tz = pytz.timezone('Asia/Shanghai') #东八区

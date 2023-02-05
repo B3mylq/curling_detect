@@ -36,22 +36,24 @@ if __name__ == "__main__":
         rs_addr = rs_data[1]
         # print(rs_data)
         #接收到的数据解码展示
-        print(rs_msg.decode('utf-8'))
+        # print(rs_msg.decode('utf-8'))
         # print(rs_addr)
-        path_vector = rs_msg.split("|")
-        print(path_vector)
-        curling_path.header.frame_id = "/velodyne"
+        
+        # print(path_vector)
+        curling_path.header.frame_id = "Pandar64"
         curling_path.header.stamp = rospy.Time.now()
         curling_path.header.seq = 50
 
-        curling_pose.header.frame_id = "velodyne"
-        # curling_pose.header.stamp = rospy.Time.from_sec(float(path_vector[0]))
-        curling_pose.header.stamp = rospy.Time.now()
-        curling_pose.pose.position.x = float(path_vector[1])
-        curling_pose.pose.position.y = float(path_vector[2])
-        curling_pose.pose.position.z = float(path_vector[3])
-
-        curling_path.poses.append(curling_pose)
+        path_vector = rs_msg.split("-")
+        for i in range(len(path_vector)):
+            temp_pose = path_vector[i].split("|")
+            curling_pose.header.frame_id = "Pandar64"
+            curling_pose.header.stamp = rospy.Time.from_sec(float(temp_pose[0]))
+            # curling_pose.header.stamp = rospy.Time.now()
+            curling_pose.pose.position.x = float(temp_pose[1])
+            curling_pose.pose.position.y = float(temp_pose[2])
+            curling_pose.pose.position.z = float(temp_pose[3])
+            curling_path.poses.append(curling_pose)
 
         pub.publish(curling_path)
         pub_stamped.publish(curling_pose)

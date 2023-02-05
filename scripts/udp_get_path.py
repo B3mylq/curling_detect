@@ -23,23 +23,22 @@ if __name__ == "__main__":
         #等待接收方发送数据
         #rs中存储的是一个元组（接收到的数据，（发送方的ip，port））
         # print("round begin")
-        rs_data = udp_socket.recvfrom(1024)
+        rs_data = udp_socket.recvfrom(65536)
         rs_msg = rs_data[0]
         rs_addr = rs_data[1]
         # print(rs_data)
         #接收到的数据解码展示
-        print(rs_msg.decode('utf-8'))
+        # print(rs_msg.decode('utf-8'))
         rs_msg = rs_msg.decode('utf-8')
         # print(rs_addr)
-        path_vector = rs_msg.split("|")
-        print(path_vector)
-
-        if(len(path_vector) == 4):
-            stamp = float(path_vector[0])
-            x = float(path_vector[1])
-            y = float(path_vector[2])
-            z = float(path_vector[3])
-            print(x)
+        path_vector = rs_msg.split("-")
+        curling_path = []
+        for i in range(len(path_vector)):
+            temp_pose = path_vector[i].split("|")
+            curling_path.append(temp_pose)
+        print(len(curling_path))
+        # curling_path中的每个元素为一个列表，其中含有四个浮点数元素，
+        # 依次为时间戳和该时间上的x、y、z坐标
 
         # rate.sleep()
 

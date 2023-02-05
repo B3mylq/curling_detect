@@ -7,7 +7,7 @@
 - [ ] 优化屎山，整合头文件统一调参位置
 
 更新日志2023/2/3：封装socket通信模块，冰壶位置的实时卡尔曼滤波由于程序时间计算上有bug未解决而暂时未更新\
-更新日志2023/2/5：更新本地记录功能，详见4.4
+更新日志2023/2/5：更新本地记录功能，详见4.4；更新socket收发轨迹的内容和格式，详见4.3
 
 
 ---
@@ -94,7 +94,8 @@ cd 【ROS工作空间】/src/curling_detect/scripts
 chmod +x *.py
 ```
 2. 配置网络参数：打开curling_detect/launch/socket_control.launch文件，关注“<param” 开头的几行，根据注释在“value=”选项下配置网络参数
-3. 主机解码方法：接收方的解码方法在curling_detect/scripts/udp_get_pose.py文件中，打开该文件，在main函数前修改网络参数(参数含义与4.2中参数相同)，之后可以复制到主机上运行
+3. 主机解码方法：接收方的解码方法在curling_detect/scripts/udp_get_path.py文件中，打开该文件，在main函数前修改网络参数(参数含义与4.2中参数相同)，之后可以复制到主机上运行\
+解码得到一个轨迹列表，其中每个元素为含有四个浮点数元素的列表，四个数字依次为时间戳和该时间上的x、y、z坐标
 4. 运行socket收发模块：新建终端运行如下命令。
 ```bash
 roslaunch curling_detect socket_control.launch
@@ -102,7 +103,7 @@ roslaunch curling_detect socket_control.launch
 &emsp;&emsp;此时从机进入等待发送的模式，在收到激光雷达检测程序发送的Path后，主机发送以下命令控制从机的通讯内容。
 | 命令        | 作用   |
 | :--------:   | :-----:  |
-| SR     | 从机回复“===lidar start sending pose msg===”，并开始向主机发送冰壶位置信息 |
+| SR     | 从机回复“===lidar start sending pose msg===”，并开始向主机发送以获取的冰壶轨迹信息 |
 | LS     |   从机回复“===lidar start recording path msg===”，并开始在curling_detect/records/rosbags/下记录检测到路径的rosbag，文件名为受到“LS”命令的【北京时间】。   |
 | LE  |    从机回复“===lidar stop recording path msg===”，并停止记录冰壶轨迹信息  |    
 
