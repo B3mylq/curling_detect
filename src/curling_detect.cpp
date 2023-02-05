@@ -17,12 +17,16 @@
 #include <pcl/common/distances.h>
 
 #include <iostream>
+#include <ctime>
+#include "unistd.h"
+#include <dlfcn.h>
 #include <algorithm>
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
+#include "rosbag/bag.h"
 #include <pcl_ros/filters/filter.h>
 #include <pcl_ros/point_cloud.h>
 
@@ -44,6 +48,9 @@ ros::Publisher pub_curling_path;
 ros::Publisher pub_transformed_curling_path;
 sensor_msgs::PointCloud2 point_in;
 sensor_msgs::PointCloud2 pub_pc;
+
+rosbag::Bag pathBag;
+string pathbag_filename;
 
 // 激光雷达参数(velodyne-16)
 //  string lidar_frame_id = "velodyne", lidar_pc_topic = "/velodyne_points";
@@ -105,6 +112,37 @@ pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
 // 聚类结果的储存容器
 vector<pcl::PointXYZ> central_poses;
 
+char *space_to_symbol(char *str)
+{
+    // 处理字符串中的空格
+    char *start = str;
+    int space_count = 0;
+    int old_length = 0;
+    while (*start)
+    {
+        if (*start == ' ')
+        {
+            space_count++;
+        }
+        old_length++;
+        start++;
+    }
+    int new_length = old_length;
+    while (old_length >= 0)
+    {
+        if (str[old_length] == ' ')
+        {
+            str[new_length--] = '-';
+        }
+        else
+        {
+            str[new_length--] = str[old_length];
+        }
+        old_length--;
+    }
+    return str;
+}
+
 void curling_init()
 {
     curlingPose.header.frame_id = lidar_frame_id;
@@ -129,6 +167,20 @@ void curling_init()
     seg.setMethodType(pcl::SAC_RANSAC);
     seg.setMaxIterations(100);
     seg.setDistanceThreshold(0.02);
+
+    // 初始化记录包裹
+    char curpwd[100];
+    getcwd(curpwd, 100);
+    string dir_path(curpwd); // 获取当前执行程序的路径
+    string file_path = "/src/curling_detect/records/rosbags/";
+    time_t timep;
+    time(&timep);
+    char *current_time = asctime(gmtime(&timep));
+    string file_name = space_to_symbol(current_time);
+    file_name.pop_back();
+    pathbag_filename = dir_path + file_path + file_name + ".bag";
+    cout << "bag stored as: " << pathbag_filename << endl;
+    pathBag.open(pathbag_filename,rosbag::BagMode::Write);
 }
 
 void position_filter()
@@ -417,6 +469,7 @@ void transform_curling_path()
         transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
     }
     pub_transformed_curling_path.publish(transformedCurlingPath);
+    pathBag.write("/transformed_curling_path",ros::Time::now(),transformedCurlingPath);
 }
 
 void cloud_pub()
@@ -504,6 +557,8 @@ int main(int argc, char *argv[])
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CurlingDetectCallback);
 
     ros::spin();
+
+    pathBag.close();
 
     return 0;
 }
