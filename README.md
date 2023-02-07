@@ -7,8 +7,9 @@
 - [ ] 优化屎山，整合头文件统一调参位置
 
 更新日志2023/2/3：封装socket通信模块，冰壶位置的实时卡尔曼滤波由于程序时间计算上有bug未解决而暂时未更新\
-更新日志2023/2/5：更新本地记录功能，详见4.4；更新socket收发轨迹的内容和格式，详见4.3
-
+更新日志2023/2/5：更新本地记录功能，详见4.4；更新socket收发轨迹的内容和格式，详见4.3\
+更新日志2023/2/7：更新RS-Helios-1615
+雷达参数，修复已知的因为无效点造成的bug。
 
 ---
 ### 1、编译配置
@@ -60,23 +61,28 @@ __话题对照表__
 | /check_cloud  |    PointCloud2    |  将雷达点云投射到冰壶场基坐标系下的结果，用以验证标定效果  | lidar_calibration.cpp |
 ---
 ### 3、冰壶检测
-1. 新建终端，启动【禾赛64线】激光雷达节点
+1. 新建终端，启动激光雷达节点【如下以禾赛64线雷达为例：】
 ```bash
 roslaunch hesai_lidar hesai_lidar.launch lidar_type:="Pandar64" frame_id:="Pandar64"
 ```
-2. 新建终端，进入curling_detect/config目录，启动rviz可视化节点
+2. 新建终端，进入curling_detect/config目录，按照如下对应关系启动rviz可视化节点
+
+| 雷达        | rviz文件名称   |
+| :--------:   | :-----:  |
+| 禾赛64线     | curling_pandar64.rviz |
+| RS-Helios-1615  |   curling_32.rviz   | 
 ```bash
 cd 【ROS工作空间】/src/curling_detect/config
-rviz -d curling_pandar64.rviz
+rviz -d 【rviz文件名称】
 ```
-左侧模块栏所有选项全部勾选，此时能看到激光雷达发布的点云数据
+&emsp;&emsp;左侧模块栏所有选项全部勾选，此时能看到激光雷达发布的点云数据
 
 3. rviz中红、绿、蓝分别是x, y, z轴，按照看到的冰壶的位置，进入curling_detect/src/curling_detect.cpp中curling_init()函数，在如下两行中输入冰壶的大致位置
 ```cpp
 curlingPose.pose.position.x = 【冰壶的大致x坐标】;
 curlingPose.pose.position.y = 【冰壶的大致y坐标】;
 ```
-新建终端，进入工作空间，编译后运行
+&emsp;&emsp;新建终端，进入工作空间，编译后运行
 ```bash
 cd 【ROS工作空间】
 catkin_make

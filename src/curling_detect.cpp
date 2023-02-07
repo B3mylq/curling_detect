@@ -60,27 +60,36 @@ string pathbag_filename;
 //  float get_vertical_accuracy(int row_id){
 //      return 2;
 //  }
-// 激光雷达参数(hesai-64)
-string lidar_frame_id = "Pandar64", lidar_pc_topic = "/hesai/pandar";
-const int vertical_num = 64, horizon_num = 1800;
-const float vertical_accuracy = 0.167, horizon_accuracy = 0.2;
-const float min_angle = -25, max_angle = 15;
-float get_vertical_accuracy(int row_idx)
+// 激光雷达参数(rslidar-32线)
+string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
+const int vertical_num = 32, horizon_num = 1800;
+const float vertical_accuracy = 1, horizon_accuracy = 0.2;
+const float min_angle = -16, max_angle = 15;
+float get_vertical_accuracy(int row_id)
 {
-    if (row_idx >= 5 && row_idx <= 6)
-    {
-        return 1;
-    }
-    if (row_idx >= 54 && row_idx <= 62)
-    {
-        return 1;
-    }
-    if (row_idx >= 7 && row_idx <= 53)
-    {
-        return 0.167;
-    }
-    ROS_WARN("there is no available vertical accuracy");
+    return 1;
 }
+// 激光雷达参数(hesai-64)
+// string lidar_frame_id = "Pandar64", lidar_pc_topic = "/hesai/pandar";
+// const int vertical_num = 64, horizon_num = 1800;
+// const float vertical_accuracy = 0.167, horizon_accuracy = 0.2;
+// const float min_angle = -25, max_angle = 15;
+// float get_vertical_accuracy(int row_idx)
+// {
+//     if (row_idx >= 5 && row_idx <= 6)
+//     {
+//         return 1;
+//     }
+//     if (row_idx >= 54 && row_idx <= 62)
+//     {
+//         return 1;
+//     }
+//     if (row_idx >= 7 && row_idx <= 53)
+//     {
+//         return 0.167;
+//     }
+//     ROS_WARN("there is no available vertical accuracy");
+// }
 
 const float ANG = 57.2957795; // 弧度制转角度的比例因数
 // 冰壶参数
@@ -147,8 +156,8 @@ void curling_init()
 {
     curlingPose.header.frame_id = lidar_frame_id;
     curlingPose.header.stamp = ros::Time::now();
-    curlingPose.pose.position.x = 5;
-    curlingPose.pose.position.y = 1;
+    curlingPose.pose.position.x = 0;
+    curlingPose.pose.position.y = -1;
     curlingPose.pose.position.z = 0;
 
     curlingPath.header = curlingPose.header;
@@ -181,6 +190,21 @@ void curling_init()
     pathbag_filename = dir_path + file_path + file_name + ".bag";
     cout << "bag stored as: " << pathbag_filename << endl;
     // pathBag.open(pathbag_filename,rosbag::BagMode::Write);
+}
+
+void prehandler()
+{
+    // ROS_INFO("size before prehandler is %d", (int)cloud_filtered->size());
+    std::vector<int> mapping;
+    pcl::removeNaNFromPointCloud(*cloud_filtered, *cloud_filtered, mapping);
+    // ROS_INFO("size after prehandler is %d", (int)cloud_filtered->size());
+    if (lidar_frame_id == "rslidar")
+    {
+        for (int i = 0; i < (*cloud_filtered).size(); i++)
+        {
+            cloud_filtered->points[i].z = 0 - cloud_filtered->points[i].z;
+        }
+    }
 }
 
 void position_filter()
@@ -233,7 +257,7 @@ void plane_segment()
     seg.setModelType(pcl::SACMODEL_PLANE); // 设置模型类型
     seg.setMethodType(pcl::SAC_RANSAC);    // 设置随机采样一致性方法类型
     seg.setMaxIterations(500);             // 最大迭代次数
-    seg.setDistanceThreshold(0.05);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
+    seg.setDistanceThreshold(0.03);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
     seg.setInputCloud(cloud_filtered);     // 输入所需要分割的点云对象
     // 引发分割实现，存储分割结果到点几何inliers及存储平面模型的系数coefficients
     seg.segment(*inliers, *coefficients);
@@ -497,6 +521,10 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     pcl::fromROSMsg(*point_msg, *cloud_filtered);
     point_in.header = point_msg->header;
 
+    prehandler();
+
+    cloud_pub();
+
     position_filter();
 
     double distance = sqrt(pow(curlingPose.pose.position.x, 2) + pow(curlingPose.pose.position.y, 2) + pow(curlingPose.pose.position.z, 2));
@@ -504,8 +532,6 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     {
         plane_segment();
     }
-
-    cloud_pub();
 
     rough_cluster();
 

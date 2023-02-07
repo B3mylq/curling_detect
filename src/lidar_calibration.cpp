@@ -21,10 +21,16 @@
 using namespace std;
 
 // 激光雷达参数(hesai-64)
-string lidar_frame_id = "Pandar64", lidar_pc_topic = "/hesai/pandar";
-const int vertical_num = 64, horizon_num = 1800;
-const float vertical_accuracy = 0.167, horizon_accuracy = 0.2;
-const float min_angle = -25, max_angle = 15;
+// string lidar_frame_id = "Pandar64", lidar_pc_topic = "/hesai/pandar";
+// const int vertical_num = 64, horizon_num = 1800;
+// const float vertical_accuracy = 0.167, horizon_accuracy = 0.2;
+// const float min_angle = -25, max_angle = 15;
+// 激光雷达参数(rslidar-32线)
+ string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
+ const int vertical_num = 32, horizon_num = 1800; 
+ const float vertical_accuracy = 1, horizon_accuracy = 0.2;
+ const float min_angle = -16, max_angle = 15;
+
 const float ANG = 57.2957795; // 弧度制转角度的比例因数
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -392,7 +398,7 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     pcl::toROSMsg(*lane_cloud, line_cloud_pub);
     // pcl::toROSMsg(*ransac_clouds[1], line_cloud_pub);
     line_cloud_pub.header.stamp = ros::Time::now();
-    line_cloud_pub.header.frame_id = "Pandar64";
+    line_cloud_pub.header.frame_id = lidar_frame_id;
     pub_line_cloud.publish(line_cloud_pub);
 
     calibrate();
@@ -401,7 +407,7 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     check_cloud = points_transform(input_cloud, transform_matrix);
     pcl::toROSMsg(*check_cloud, check_cloud_pub);
     check_cloud_pub.header.stamp = ros::Time::now();
-    check_cloud_pub.header.frame_id = "Pandar64";
+    check_cloud_pub.header.frame_id = lidar_frame_id;
     pub_check_cloud.publish(check_cloud_pub);
 
     lane_cloud->clear();
@@ -414,7 +420,7 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "lidar_calibrate");
     ros::NodeHandle nh;
 
-    ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>("/hesai/pandar", 100, CalibrateCallback);
+    ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CalibrateCallback);
     pub_line_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/line_cloud", 100, true);
     pub_check_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/check_cloud", 100, true);
 

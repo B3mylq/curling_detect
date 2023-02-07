@@ -69,6 +69,8 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr points_transform(pcl::PointCloud<pcl::Point
 
 int main(int argc, char **argv)
 {
+    string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
+
     ros::init(argc, argv, "showline");
     ros::NodeHandle nh;
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("/ground_marker", 10);
@@ -79,7 +81,7 @@ int main(int argc, char **argv)
     visualization_msgs::Marker line_list, prompt_list, calibrate_list;
     ros::Rate r(10);
 
-    line_list.header.frame_id = "Pandar64";
+    line_list.header.frame_id = lidar_frame_id;
     line_list.header.stamp = ros::Time::now();
     line_list.ns = "lines";
     line_list.action = visualization_msgs::Marker::ADD;
@@ -271,12 +273,12 @@ int main(int argc, char **argv)
 
         pcl::toROSMsg(*test_cloud, pub_test_cloud);
         pub_test_cloud.header.stamp = ros::Time::now();
-        pub_test_cloud.header.frame_id = "Pandar64";
+        pub_test_cloud.header.frame_id = lidar_frame_id;
         test_points_pub.publish(pub_test_cloud);
 
         pcl::toROSMsg(*trasformed_cloud, pub_test_cloud);
         pub_test_cloud.header.stamp = ros::Time::now();
-        pub_test_cloud.header.frame_id = "Pandar64";
+        pub_test_cloud.header.frame_id = lidar_frame_id;
         tramsformed_points_pub.publish(pub_test_cloud);
 
         r.sleep();
