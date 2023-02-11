@@ -26,26 +26,25 @@ catkin_make
 source devel/setup.bash
 ```
 ---
-### 2、激光雷达标定
-准备两个方形箱子放在场地上图中橙色方块所示位置，方框两边沿与图中红线对齐\
-![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate.png)
-开启辅助图像节点
+### 2、激光雷达标定：确定雷达在基坐标系下的位置
+1. 标定原理：通过四条线条确定两个基坐标系下已知的两个交点【即下文中的“标定点”】，通过两个交点在雷达坐标系下的位置确定雷达相对基坐标系的精确位置。
+2. 参数与标定物准备：打开curling_detect/launch/lidar_calibration.launch文件，确定两个标定点在基坐标系下的准确坐标和雷达在基坐标系下的粗略预期坐标\
+【注意：请将y坐标更小的标定点作为标定点1】\
+【标定点的坐标需要使用者在标定前精确确定，而雷达坐标只是粗略的预期，通过标定程序来确定】
+<!-- ![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate.png) -->
+3. 标定物与雷达放置：准备两个方形箱子放在场地上，使朝向雷达的直角点位于场地上标定点的位置\
+打开一个新终端运行辅助图像节点，将rviz左侧模块全部勾选上
 ```bash
-rosrun curling_detect prompt_graph
+roslaunch curling_detect lidar_calibration.launch
 ```
-新建一个终端进入curling_detect/config目录，运行辅助标定图像
-```bash
-cd 【ROS工作空间】/src/curling_detect/config
-rviz -d prompt_graph.rviz
-```
-此时可以看到如下界面，\
+&emsp;&emsp;此时可以看到如下界面，\
 ![](https://github.com/B3mylq/curling_detect/blob/main/img/promtp_graph.png)
-蓝色为基坐标系下冰壶场地图，绿色为点云选取范围，红色的为校准辅助线\
-请保证【点云选取范围内】除了箱子和地面没有其他干扰，移动激光雷达使箱子的两边沿尽量如图中所示贴近对准辅助线，使箱子接受激光扫面的四个面形如下图黄色点云所示。\
+&emsp;&emsp;蓝色为基坐标系下冰壶场地图，绿色为点云选取范围，红色的为校准辅助线\
+&emsp;&emsp;请保证【点云选取范围内】除了箱子和地面没有其他干扰，【移动激光雷达】使箱子的直角点【即标定点】与对准辅助线形成的直角交点尽量重合，箱子接受激光扫面的四个面形如下图黄色点云所示。\
 ![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example01.png)
-目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平
+&emsp;&emsp;目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平
 
-3. 新建一个终端启动校准节点自动定标
+4. 新建一个终端启动校准节点自动定标
 ```bash
 rosrun curling_detect lidar_calibration
 ```

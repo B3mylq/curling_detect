@@ -26,12 +26,13 @@ using namespace std;
 // const float vertical_accuracy = 0.167, horizon_accuracy = 0.2;
 // const float min_angle = -25, max_angle = 15;
 // 激光雷达参数(rslidar-32线)
- string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
- const int vertical_num = 32, horizon_num = 1800; 
- const float vertical_accuracy = 1, horizon_accuracy = 0.2;
- const float min_angle = -16, max_angle = 15;
+string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
+const int vertical_num = 32, horizon_num = 1800; 
+const float vertical_accuracy = 1, horizon_accuracy = 0.2;
+const float min_angle = -16, max_angle = 15;
 
 const float ANG = 57.2957795; // 弧度制转角度的比例因数
+double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 pcl::PointCloud<pcl::PointXYZI>::Ptr lane_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -295,41 +296,82 @@ Eigen::Isometry3d get_translation(Eigen::Isometry3d rot_tf, Eigen::Vector3d vect
     return homo_tf;
 }
 
-pcl::PointCloud<pcl::PointXYZI>::Ptr points_transform(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud, Eigen::Isometry3d tf){
-    pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_points(new pcl::PointCloud<pcl::PointXYZI>);
-    *transformed_points += *point_cloud;
-    for(int i = 0; i < transformed_points->points.size(); i++){
-        Eigen::Vector3d temp_point(transformed_points->points[i].x, transformed_points->points[i].y, transformed_points->points[i].z);
-        Eigen::Vector3d point_transformed = tf*temp_point;
-        transformed_points->points[i].x = point_transformed[0];
-        transformed_points->points[i].y = point_transformed[1];
-        transformed_points->points[i].z = point_transformed[2];
+vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> calibrate_clouds;
+void arrange_lines(){
+    if(ransac_clouds.size() == 3){
+        ROS_INFO("three lines for calibration");
+    }else if(ransac_clouds.size() == 4){
+        ROS_INFO("four lines for calibration");
+        
+        Eigen::Vector4d central_ys;
+        double central_y;
+        for (int i = 0; i < ransac_clouds.size(); i++)
+        {
+            pcl::PointXYZ centrol_pose = get_central_pose(ransac_clouds[i]);
+            central_ys[i] = centrol_pose.y;
+            central_y += centrol_pose.y;
+        }
+        
+        central_y = central_y/ransac_clouds.size();
+        
+        vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> line_group1, line_group2;
+        for (int i = 0; i < ransac_clouds.size(); i++)
+        {
+            pcl::PointCloud<pcl::PointXYZI>::Ptr temp_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+            *temp_ptr += *(ransac_clouds[i]);
+            if(central_ys[i] < central_y){
+                line_group1.push_back(temp_ptr);
+            }else{
+                line_group2.push_back(temp_ptr);
+            }
+        }
+        
+        pcl::PointCloud<pcl::PointXYZI>::Ptr temp_ptr0(new pcl::PointCloud<pcl::PointXYZI>);
+        *temp_ptr0 += *(line_group1[0]);
+        calibrate_clouds.push_back(temp_ptr0);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr temp_ptr1(new pcl::PointCloud<pcl::PointXYZI>);
+        *temp_ptr1 += *(line_group1[1]);
+        calibrate_clouds.push_back(temp_ptr1);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr temp_ptr2(new pcl::PointCloud<pcl::PointXYZI>);
+        *temp_ptr2 += *(line_group2[0]);
+        calibrate_clouds.push_back(temp_ptr2);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr temp_ptr3(new pcl::PointCloud<pcl::PointXYZI>);
+        *temp_ptr3 += *(line_group2[1]);
+        calibrate_clouds.push_back(temp_ptr3);
+        ransac_clouds = calibrate_clouds;
+        
+    }else{
+        ROS_WARN("incorrect number of lines for calibration");
+        return;
     }
-    return transformed_points;
 }
 
-void calibrate()
+void calibrate(int pattern)
 {
-    Eigen::Vector3d central_ys;
-    for (int i = 0; i < ransac_clouds.size(); i++)
-    {
-        pcl::PointXYZ centrol_pose = get_central_pose(ransac_clouds[i]);
-        central_ys[i] = centrol_pose.y;
-    }
     Eigen::Vector3d::Index maxCol, minCol;
-	double min = central_ys.minCoeff(&minCol);
-	double max = central_ys.maxCoeff(&maxCol);
-	cout << "Max = \n" << max << endl;
-	cout << "Min = \n" << min << endl;
-	cout << "minCol = " << minCol << "maxCol = " << maxCol << endl;
+    if(pattern == 3){
+        Eigen::Vector3d central_ys;
+        for (int i = 0; i < ransac_clouds.size(); i++)
+        {
+            pcl::PointXYZ centrol_pose = get_central_pose(ransac_clouds[i]);
+            central_ys[i] = centrol_pose.y;
+        }
+        double min = central_ys.minCoeff(&minCol);
+        double max = central_ys.maxCoeff(&maxCol);
+        cout << "Max = \n" << max << endl;
+        cout << "Min = \n" << min << endl;
+        cout << "minCol = " << minCol << "maxCol = " << maxCol << endl;
+    }
 
-    vector<Eigen::Vector4d> lineParams(3);
+    vector<Eigen::Vector4d> lineParams(pattern);
+    
     for (int i = 0; i < ransac_clouds.size(); i++)
     {
         for (int pt_idx = 0; pt_idx < ransac_clouds[i]->points.size(); pt_idx++)
         {
             ransac_clouds[i]->points[pt_idx].z = 0;
         }
+        
         pcl::SampleConsensusModelLine<pcl::PointXYZI>::Ptr model_line(new pcl::SampleConsensusModelLine<pcl::PointXYZI>(ransac_clouds[i]));
         pcl::RandomSampleConsensus<pcl::PointXYZI> ransac(model_line);
         ransac.setDistanceThreshold(0.02); // 内点到模型的最大距离
@@ -352,28 +394,58 @@ void calibrate()
              << " size: " << ransac_clouds[i]->points.size() << endl;
         Eigen::Vector4d lineParam;
         lineParam << coef[3], coef[4], coef[0], coef[1];
-        if(i == minCol){lineParams[0] = lineParam;}
-        else if(i == maxCol){lineParams[2] = lineParam;}
-        else{lineParams[1] = lineParam;}
+        if(pattern == 3){
+            if(i == minCol){lineParams[0] = lineParam;}
+            else if(i == maxCol){lineParams[2] = lineParam;}
+            else{lineParams[1] = lineParam;}
+        }else if(pattern == 4){
+            lineParams[i] = lineParam;
+        }else{
+            ROS_WARN("incorrect number of lines for calibration");
+            return;
+        }
+        ROS_INFO("check2===============");
     }
 
-    vector<Eigen::Vector2d> intersections(3);
-    intersections[0] = get_intersection(lineParams[1], lineParams[0]);
-    intersections[1] = get_intersection(lineParams[1], lineParams[2]);
+    vector<Eigen::Vector2d> intersections(2);
+    if(pattern == 3){
+        intersections[0] = get_intersection(lineParams[1], lineParams[0]);
+        intersections[1] = get_intersection(lineParams[1], lineParams[2]);
+    }else if(pattern == 4){
+        intersections[0] = get_intersection(lineParams[0], lineParams[1]);
+        intersections[1] = get_intersection(lineParams[2], lineParams[3]);
+    }else{
+        ROS_WARN("incorrect number of lines for calibration");
+        return;
+    }
+    
     ROS_INFO("intersections are (%f, %f),(%f, %f);", intersections[0][0], intersections[0][1],
                                                      intersections[1][0], intersections[1][1]);
 
     Eigen::Vector3d vectorBefore(intersections[1][0] - intersections[0][0], 
                                  intersections[1][1] - intersections[0][1], 0), 
-                    vectorAfter(0, 1, 0);
+                    vectorAfter(marker2_x - marker1_x, marker2_y - marker1_y, 0);
     transform_matrix = get_rotation(vectorBefore, vectorAfter);
     vectorBefore << intersections[0][0], intersections[0][1], 0;
-    vectorAfter << 11.888, 0, 0;
+    vectorAfter << marker1_x, marker1_y, 0;
     transform_matrix = get_translation(transform_matrix, vectorBefore, vectorAfter);
     std::cout << "transform_matrix: " << std::endl
               << transform_matrix.matrix() << std::endl;
 
     calibrate_flag = true;
+}
+
+pcl::PointCloud<pcl::PointXYZI>::Ptr points_transform(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud, Eigen::Isometry3d tf){
+    pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_points(new pcl::PointCloud<pcl::PointXYZI>);
+    *transformed_points += *point_cloud;
+    for(int i = 0; i < transformed_points->points.size(); i++){
+        Eigen::Vector3d temp_point(transformed_points->points[i].x, transformed_points->points[i].y, transformed_points->points[i].z);
+        Eigen::Vector3d point_transformed = tf*temp_point;
+        transformed_points->points[i].x = point_transformed[0];
+        transformed_points->points[i].y = point_transformed[1];
+        transformed_points->points[i].z = point_transformed[2];
+    }
+    return transformed_points;
 }
 
 void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
@@ -384,8 +456,10 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     int size;
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-    *filtered_cloud += *(position_filter(-7 - 0.5, 4 + 0.5, 0));
-    *filtered_cloud += *(position_filter(-7 - 0.5, 4 + 4.950 + 0.5, 0));
+    double x_offset1 = marker1_x - lidar_x, y_offset1 = marker1_y - lidar_y;
+    double x_offset2 = marker2_x - lidar_x, y_offset2 = marker2_y - lidar_y;
+    *filtered_cloud += *(position_filter(x_offset1 - 0.5, y_offset1 + 0.5, 0));
+    *filtered_cloud += *(position_filter(x_offset2 - 0.5, y_offset2 + 0.5, 0));
     input_cloud->clear();
     *input_cloud += *filtered_cloud;
 
@@ -401,7 +475,9 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     line_cloud_pub.header.frame_id = lidar_frame_id;
     pub_line_cloud.publish(line_cloud_pub);
 
-    calibrate();
+    arrange_lines();
+
+    calibrate(line_num);
 
     pcl::fromROSMsg(*point_msg, *input_cloud);
     check_cloud = points_transform(input_cloud, transform_matrix);
@@ -419,6 +495,13 @@ int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "lidar_calibrate");
     ros::NodeHandle nh;
+
+    ros::param::get("marker1_x", marker1_x);
+    ros::param::get("marker1_y", marker1_y);
+    ros::param::get("marker2_x", marker2_x);
+    ros::param::get("marker2_y", marker2_y);
+    ros::param::get("lidar_x", lidar_x);
+    ros::param::get("lidar_y", lidar_y);
 
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CalibrateCallback);
     pub_line_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/line_cloud", 100, true);

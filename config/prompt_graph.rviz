@@ -26,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -64,7 +64,7 @@ Visualization Manager:
       Marker Topic: /ground_marker
       Name: Marker
       Namespaces:
-        {}
+        lines: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -72,17 +72,17 @@ Visualization Manager:
       Marker Topic: /prompt_marker
       Name: Marker
       Namespaces:
-        {}
+        lines: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /calibrate_marker
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -106,7 +106,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.019999999552965164
       Style: Flat Squares
-      Topic: /line_cloud
+      Topic: /check_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -134,7 +134,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.019999999552965164
       Style: Flat Squares
-      Topic: /check_cloud
+      Topic: /line_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -171,7 +171,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: Pandar64
+    Fixed Frame: rslidar
     Frame Rate: 30
   Name: root
   Tools:
@@ -195,25 +195,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 10.632170677185059
+      Distance: 28.115800857543945
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.30480265617370605
-        Y: 1.8864021301269531
-        Z: -3.342799118399853e-6
+        X: 1.2406272888183594
+        Y: 5.386140823364258
+        Z: -7.634333087480627e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9447965621948242
+      Pitch: 0.5497967600822449
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz)
-      Yaw: 4.710466384887695
+      Yaw: 4.700466156005859
     Saved: ~
 Window Geometry:
   Displays:

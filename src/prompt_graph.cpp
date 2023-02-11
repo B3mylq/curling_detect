@@ -77,8 +77,15 @@ int main(int argc, char **argv)
     ros::Publisher prompt_pub = nh.advertise<visualization_msgs::Marker>("/prompt_marker", 10);
     ros::Publisher calibrate_pub = nh.advertise<visualization_msgs::Marker>("/calibrate_marker", 10);
     ros::Publisher test_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/calibrate_points", 100, true);
-    ros::Publisher tramsformed_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/hesai/pandar", 100, true);
+    ros::Publisher tramsformed_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>(lidar_pc_topic, 100, true);
     visualization_msgs::Marker line_list, prompt_list, calibrate_list;
+    double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
+    ros::param::get("marker1_x", marker1_x);
+    ros::param::get("marker1_y", marker1_y);
+    ros::param::get("marker2_x", marker2_x);
+    ros::param::get("marker2_y", marker2_y);
+    ros::param::get("lidar_x", lidar_x);
+    ros::param::get("lidar_y", lidar_y);
     ros::Rate r(10);
 
     line_list.header.frame_id = lidar_frame_id;
@@ -171,11 +178,12 @@ int main(int argc, char **argv)
 
     // 范围提示框
     geometry_msgs::Point origin;
-    double x_offset = 7, y_offset = 4;
+    double x_offset1 = marker1_x - lidar_x, y_offset1 = marker1_y - lidar_y;
+    double x_offset2 = marker2_x - lidar_x, y_offset2 = marker2_y - lidar_y;
     double range = 1;
     origin.z = 0.1;
-    origin.y = y_offset + 0.5;
-    origin.x = -x_offset - 0.5;
+    origin.y = y_offset1 + 0.5;
+    origin.x = x_offset1 - 0.5;
     p = origin; p.x = origin.x + range; p.y = origin.y + range;
     prompt_list.points.push_back(p);
     p.y = origin.y - range;
@@ -190,8 +198,8 @@ int main(int argc, char **argv)
     p.x = origin.x + range;
     prompt_list.points.push_back(p);
     origin.z = 0.1;
-    origin.y = y_offset + 4.950 + 0.5;
-    origin.x = -x_offset - 0.5;
+    origin.y = y_offset2 + 0.5;
+    origin.x = x_offset2 - 0.5;
     p = origin; p.x = origin.x + range; p.y = origin.y + range;
     prompt_list.points.push_back(p);
     p.y = origin.y - range;
@@ -208,8 +216,8 @@ int main(int argc, char **argv)
 
     // 校准提示
     origin.z = 0.1;
-    origin.y = y_offset;
-    origin.x = -x_offset;
+    origin.y = y_offset1;
+    origin.x = x_offset1;
     p = origin; 
     calibrate_list.points.push_back(p);
     p.y = origin.y + range;
@@ -219,8 +227,8 @@ int main(int argc, char **argv)
     p.x = origin.x - range;
     calibrate_list.points.push_back(p);
     origin.z = 0.1;
-    origin.y = y_offset + 4.950;
-    origin.x = -x_offset;
+    origin.y = y_offset2;
+    origin.x = x_offset2;
     p = origin; 
     calibrate_list.points.push_back(p);
     p.y = origin.y + range;
@@ -231,29 +239,29 @@ int main(int argc, char **argv)
     calibrate_list.points.push_back(p);
 
     pcl::PointXYZI start, end;
-    start.x = 1.829 + 3.658 + 6.401;
-    start.y = 0;
+    start.x = marker1_x;
+    start.y = marker1_y;
     start.z = 0.08;
     end.x = start.x - 0.36;
     end.y = start.y;
     end.z = 0.085;
     add_line_points(test_cloud, start, end);
-    start.x = 1.829 + 3.658 + 6.401;
-    start.y = 0;
+    start.x = marker1_x;
+    start.y = marker1_y;
     start.z = 0.08;
     end.x = start.x;
     end.y = start.y + 0.39;
     end.z = 0.075;
     add_line_points(test_cloud, start, end);
-    start.x = 1.829 + 3.658 + 6.401;
-    start.y = 4.950;
+    start.x = marker2_x;
+    start.y = marker2_y;
     start.z = 0.07;
     end.x = start.x - 0.34;
     end.y = start.y;
     end.z = 0.068;
     add_line_points(test_cloud, start, end);
-    start.x = 1.829 + 3.658 + 6.401;
-    start.y = 4.950;
+    start.x = marker2_x;
+    start.y = marker2_y;
     start.z = 0.07;
     end.x = start.x;
     end.y = start.y + 0.33;
@@ -262,7 +270,7 @@ int main(int argc, char **argv)
     add_noise(test_cloud);
 
     Eigen::Isometry3d T = Eigen::Isometry3d::Identity();
-    T.pretranslate(Eigen::Vector3d (-(11.888+x_offset), y_offset, 0));
+    T.pretranslate(Eigen::Vector3d (-lidar_x, -lidar_y, 0));
     pcl::PointCloud<pcl::PointXYZI>::Ptr trasformed_cloud = points_transform(test_cloud, T);
 
     while (ros::ok())
