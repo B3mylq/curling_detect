@@ -156,8 +156,8 @@ void curling_init()
 {
     curlingPose.header.frame_id = lidar_frame_id;
     curlingPose.header.stamp = ros::Time::now();
-    curlingPose.pose.position.x = 0;
-    curlingPose.pose.position.y = -1;
+    curlingPose.pose.position.x = -3.5;
+    curlingPose.pose.position.y = 8;
     curlingPose.pose.position.z = 0;
 
     curlingPath.header = curlingPose.header;
@@ -166,9 +166,12 @@ void curling_init()
     transformedCurlingPath.header = curlingPose.header;
     transformedCurlingPath.poses.clear();
 
-    x_max = x_min = y_max = y_min = r_max = r_min = 1;
+    x_max = x_min = r_max = r_min = 1.2;
+    y_max = y_min = 1.8;
     z_max = 0.4;
     z_min = 0.8;
+
+    ros::param::set("/use_sim_time",true);
 
     // 设置平面分割的参数
     seg.setOptimizeCoefficients(true);
@@ -256,7 +259,7 @@ void plane_segment()
     // 必要的配置，设置分割的模型类型，所用的随机参数估计方法，距离阀值，输入点云
     seg.setModelType(pcl::SACMODEL_PLANE); // 设置模型类型
     seg.setMethodType(pcl::SAC_RANSAC);    // 设置随机采样一致性方法类型
-    seg.setMaxIterations(500);             // 最大迭代次数
+    seg.setMaxIterations(1200);            // 最大迭代次数
     seg.setDistanceThreshold(0.03);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
     seg.setInputCloud(cloud_filtered);     // 输入所需要分割的点云对象
     // 引发分割实现，存储分割结果到点几何inliers及存储平面模型的系数coefficients
@@ -285,10 +288,10 @@ void rough_cluster()
     (curling_horizon_size / distance * ANG / horizon_accuracy > 1) ? hori_lidar_num = ceil(curling_horizon_size / distance * ANG / horizon_accuracy) : hori_lidar_num = 2;
     (curling_vertical_size / distance * ANG / vertical_accuracy > 0) ? ver_lidar_num = ceil(curling_vertical_size / distance * ANG / vertical_accuracy) : ver_lidar_num = 1;
 
-    max_size = (hori_lidar_num + 1) * (ver_lidar_num + 1) * 1.5;
+    max_size = (hori_lidar_num + 1) * (ver_lidar_num + 1) * 1.2;
     (hori_lidar_num >= 8 && ver_lidar_num >= 2) ? min_size = ceil(hori_lidar_num * ver_lidar_num * 0.2) : min_size = 4;
     // min_size = 60;
-    distance < 2.7 ? cluster_tolerance = vertical_accuracy / ANG *distance : cluster_tolerance = horizon_accuracy / ANG * distance * 2.7;
+    distance < 9.6 ? cluster_tolerance = vertical_accuracy / ANG * distance * 1.4 : cluster_tolerance = horizon_accuracy / ANG * distance * 2.7;
 
     tree->setInputCloud(cloud_filtered);
     ec.setClusterTolerance(cluster_tolerance);
@@ -399,7 +402,7 @@ void cluster_extract()
         circle_radius.push_back(cloud_row_radiu);
 
         pcl::PointXYZ central_pose = get_central_pose(cloud_cluster_one);
-        if (cloud_max_segment > 0.18 && cloud_max_segment < 0.45 && cloud_row_radiu > 0.067 && cloud_row_radiu < 0.28)
+        if (cloud_max_segment > 0.12 && cloud_max_segment < 0.45 && cloud_row_radiu > 0.067 && cloud_row_radiu < 0.28)
         {
             central_poses.push_back(central_pose);
             *cloud_cluster_all = *cloud_cluster_all + *cloud_cluster_one;

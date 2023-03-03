@@ -1,0 +1,17 @@
+<launch>
+    <!-- 主机ip地址 -->
+    <param name="master_ip_address" value="192.168.101.3" type="str" />
+    <!-- 主机发送指令的端口号 -->
+    <param name="master_command_port" value="1145" type="int" />
+
+    <!-- 主机表达“开始发送数据”的命令 -->
+    <param name="master_pose_send_command" value="SR" type="str" />
+    <!-- 主机表达“开始录制”的命令 -->
+    <param name="master_begin_record_command" value="LS" type="str" />
+    <!-- 主机表达“结束录制”的命令 -->
+    <param name="master_end_record_command" value="LE" type="str" />
+
+
+    <node pkg="curling_detect" type="udp_client.py" name="Lidar_Client" output="screen" />
+
+</launch>

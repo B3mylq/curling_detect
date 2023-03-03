@@ -9,22 +9,20 @@
 更新日志2023/2/3：封装socket通信模块，冰壶位置的实时卡尔曼滤波由于程序时间计算上有bug未解决而暂时未更新\
 更新日志2023/2/5：更新本地记录功能，详见4.4；更新socket收发轨迹的内容和格式，详见4.3\
 更新日志2023/2/7：更新RS-Helios-1615
+更新日志2023/3/3：根据新的标定要求更新圆柱标定物的标定方法，更新socket通讯代码的封装，优化部分其他封装
 雷达参数，修复已知的因为无效点造成的bug。
 
 ---
 ### 1、编译配置
-打开终端，创建或进入ROS工作空间，执行以下命令
+打开终端，创建或进入ROS工作空间，执行以下命令克隆项目并编译
 ```bash
 cd src
 git clone https://github.com/B3mylq/curling_detect.git
-```
-打开功能包curling_detect下的CMakeLists.txt，将第38行`add_library(kalman /home/b3mylq/ROS_ws/pcl_ws/src/curling_detect/include/kf_filter/kalman.cpp)`中的路径改为现在功能包中include/kf_filter/kalman.cpp所在的路径。
-重新进入终端，编译文件
-```bash
 cd ..
 catkin_make
 source devel/setup.bash
 ```
+
 ---
 ### 2、激光雷达标定：确定雷达在基坐标系下的位置
 1. 标定原理：通过四条线条确定两个基坐标系下已知的两个交点【即下文中的“标定点”】，通过两个交点在雷达坐标系下的位置确定雷达相对基坐标系的精确位置。

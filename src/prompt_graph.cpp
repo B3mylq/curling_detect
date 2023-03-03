@@ -27,17 +27,34 @@ void add_line_points(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud, pcl::Poin
     double line_length = pcl::euclideanDistance(start, end);
     double resolution = 0.01, point_num = line_length / resolution;
 
-    pcl::PointXYZI start_to_end;
-    start_to_end.x = end.x - start.x;
-    start_to_end.y = end.y - start.y;
-    start_to_end.z = end.z - start.z;
-
     for (double idx = 0; idx < point_num; idx++)
     {
         pcl::PointXYZI temp_point;
         temp_point.x = idx / point_num * (end.x - start.x) + start.x;
         temp_point.y = idx / point_num * (end.y - start.y) + start.y;
         temp_point.z = idx / point_num * (end.z - start.z) + start.z;
+        point_cloud->points.push_back(temp_point);
+    }
+    // cout << "last point" << point_cloud->points[point_cloud->points.size() - 1] << endl;
+}
+
+void add_circle_points(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud, 
+                       pcl::PointXYZI centre, 
+                       double radiu, double start_angle, double end_angle)
+{
+    if(end_angle <= start_angle){
+        end_angle += 2*M_PI;
+    }
+    double angle_range = end_angle - start_angle;
+    double resolution = 0.02, point_num = angle_range / resolution;
+
+    for (double idx = 0; idx < point_num; idx++)
+    {
+        double angle = idx/point_num*angle_range + start_angle;
+        pcl::PointXYZI temp_point;
+        temp_point.x = centre.x + radiu*cos(angle);
+        temp_point.y = centre.y + radiu*sin(angle);
+        temp_point.z = 0.1;
         point_cloud->points.push_back(temp_point);
     }
     // cout << "last point" << point_cloud->points[point_cloud->points.size() - 1] << endl;
@@ -238,35 +255,46 @@ int main(int argc, char **argv)
     p.x = origin.x - range;
     calibrate_list.points.push_back(p);
 
-    pcl::PointXYZI start, end;
+    pcl::PointXYZI start, end, centre;
     start.x = marker1_x;
     start.y = marker1_y;
     start.z = 0.08;
     end.x = start.x - 0.36;
     end.y = start.y;
     end.z = 0.085;
-    add_line_points(test_cloud, start, end);
+    // add_line_points(test_cloud, start, end);
     start.x = marker1_x;
     start.y = marker1_y;
     start.z = 0.08;
     end.x = start.x;
     end.y = start.y + 0.39;
     end.z = 0.075;
-    add_line_points(test_cloud, start, end);
+    // add_line_points(test_cloud, start, end);
     start.x = marker2_x;
     start.y = marker2_y;
     start.z = 0.07;
     end.x = start.x - 0.34;
     end.y = start.y;
     end.z = 0.068;
-    add_line_points(test_cloud, start, end);
+    // add_line_points(test_cloud, start, end);
     start.x = marker2_x;
     start.y = marker2_y;
     start.z = 0.07;
     end.x = start.x;
     end.y = start.y + 0.33;
     end.z = 0.072;
-    add_line_points(test_cloud, start, end);
+    // add_line_points(test_cloud, start, end);
+    double theta1 = atan2(lidar_y - marker1_y, lidar_x - marker1_x);
+    double theta2 = atan2(lidar_y - marker2_y, lidar_x - marker2_x);
+    // ROS_INFO("theta1 = %f, theta2 = %f", theta1, theta2);
+    centre.x = marker1_x;
+    centre.y = marker1_y;
+    centre.z = 0.1;
+    add_circle_points(test_cloud, centre, 0.12, theta1 - M_PI/2, theta1 + M_PI/2);
+    centre.x = marker2_x;
+    centre.y = marker2_y;
+    centre.z = 0.1;
+    add_circle_points(test_cloud, centre, 0.12, theta2 - M_PI/2, theta2 + M_PI/2);
     add_noise(test_cloud);
 
     Eigen::Isometry3d T = Eigen::Isometry3d::Identity();

@@ -36,7 +36,7 @@ include_directories(
  
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-add_library(filter /home/b3mylq/ROS_ws/pcl_ws/src/curling_detect/include/kf_filter/kalman.cpp)
+add_library(filter include/kf_filter/kalman.cpp)
  
 # add_executable(depth_make src/depth_make.cpp) 
 # target_link_libraries(depth_make ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES}) 
@@ -69,6 +69,10 @@ add_dependencies(prompt_graph beginner_tutorials_generate_messages_cpp)
 add_executable(lidar_calibration src/lidar_calibration.cpp) 
 target_link_libraries(lidar_calibration ${catkin_LIBRARIES} ${PCL_LIBRARIES}) 
 add_dependencies(lidar_calibration beginner_tutorials_generate_messages_cpp)
+
+add_executable(lidar_calibration_cylinder src/lidar_calibration_cylinder.cpp) 
+target_link_libraries(lidar_calibration_cylinder ${catkin_LIBRARIES} ${PCL_LIBRARIES}) 
+add_dependencies(lidar_calibration_cylinder beginner_tutorials_generate_messages_cpp)
 
 # add_executable(plane_segment src/plane_segment.cpp) 
 # target_link_libraries(plane_segment ${catkin_LIBRARIES} ${PCL_LIBRARIES}) 
