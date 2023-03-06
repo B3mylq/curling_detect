@@ -193,6 +193,16 @@ int main(int argc, char **argv)
     p.y = 0;
     line_list.points.push_back(p);
 
+    geometry_msgs::Point map_origin;
+    map_origin.x = 3.658;
+    map_origin.y = 4.950/2;
+    
+    for(int i = 0; i < line_list.points.size(); i++){
+        line_list.points[i].x -= map_origin.x;
+        line_list.points[i].y -= map_origin.y;
+    }
+
+
     // 范围提示框
     geometry_msgs::Point origin;
     double x_offset1 = marker1_x - lidar_x, y_offset1 = marker1_y - lidar_y;

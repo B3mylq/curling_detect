@@ -8,7 +8,7 @@
 
 更新日志2023/2/3：封装socket通信模块，冰壶位置的实时卡尔曼滤波由于程序时间计算上有bug未解决而暂时未更新\
 更新日志2023/2/5：更新本地记录功能，详见4.4；更新socket收发轨迹的内容和格式，详见4.3\
-更新日志2023/2/7：更新RS-Helios-1615
+更新日志2023/2/7：更新RS-Helios-1615\
 更新日志2023/3/3：根据新的标定要求更新圆柱标定物的标定方法，更新socket通讯代码的封装，优化部分其他封装
 雷达参数，修复已知的因为无效点造成的bug。
 
@@ -25,12 +25,25 @@ source devel/setup.bash
 
 ---
 ### 2、激光雷达标定：确定雷达在基坐标系下的位置
-1. 标定原理：通过四条线条确定两个基坐标系下已知的两个交点【即下文中的“标定点”】，通过两个交点在雷达坐标系下的位置确定雷达相对基坐标系的精确位置。
+1. 标定原理：通过冰面上两个已知位置的冰壶扫描点，拟合其圆心位置作为标定点【下文中统称为“标定点”】，通过两个标定点在雷达坐标系下的位置确定雷达相对基坐标系的精确位置。
+2. 参数与标定物准备：用编辑器打开curling_detect/launch/lidar_calibration.launch文件，确定两个标定点在基坐标系下的准确坐标和雷达在基坐标系下的粗略预期坐标\
+【注意：请将距离投壶区更近的冰壶位置作为标定点1】\
+【标定点的坐标需要使用者在标定前精确确定，而雷达坐标只是粗略的预期，通过标定程序来确定】
+3. 标定物与雷达放置：将冰壶放置在标定点位置，目前程序设定雷达在投掷方向的右侧\
+打开一个新终端运行辅助图像节点，将rviz左侧模块全部勾选上
+```bash
+roslaunch curling_detect lidar_calibration.launch
+```
+&emsp;&emsp;此时可以看到如下界面，\
+![](https://github.com/B3mylq/curling_detect/blob/main/img/promtp_graph_cylinder.png)
+&emsp;&emsp;蓝色为基坐标系下冰壶场地图，绿色为点云选取范围,请保证【点云选取范围内】除了冰壶和地面没有其他干扰。\
+&emsp;&emsp;目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平 
+<!-- 1. 标定原理：通过四条线条确定两个基坐标系下已知的两个交点【即下文中的“标定点”】，通过两个交点在雷达坐标系下的位置确定雷达相对基坐标系的精确位置。
 2. 参数与标定物准备：打开curling_detect/launch/lidar_calibration.launch文件，确定两个标定点在基坐标系下的准确坐标和雷达在基坐标系下的粗略预期坐标\
 【注意：请将y坐标更小的标定点作为标定点1】\
 【标定点的坐标需要使用者在标定前精确确定，而雷达坐标只是粗略的预期，通过标定程序来确定】
 <!-- ![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate.png) -->
-3. 标定物与雷达放置：准备两个方形箱子放在场地上，使朝向雷达的直角点位于场地上标定点的位置\
+<!-- 3. 标定物与雷达放置：准备两个方形箱子放在场地上，使朝向雷达的直角点位于场地上标定点的位置\
 打开一个新终端运行辅助图像节点，将rviz左侧模块全部勾选上
 ```bash
 roslaunch curling_detect lidar_calibration.launch
@@ -40,14 +53,14 @@ roslaunch curling_detect lidar_calibration.launch
 &emsp;&emsp;蓝色为基坐标系下冰壶场地图，绿色为点云选取范围，红色的为校准辅助线\
 &emsp;&emsp;请保证【点云选取范围内】除了箱子和地面没有其他干扰，【移动激光雷达】使箱子的直角点【即标定点】与对准辅助线形成的直角交点尽量重合，箱子接受激光扫面的四个面形如下图黄色点云所示。\
 ![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example01.png)
-&emsp;&emsp;目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平
+&emsp;&emsp;目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平 -->
 
 4. 新建一个终端启动校准节点自动定标
 ```bash
-rosrun curling_detect lidar_calibration
+rosrun curling_detect lidar_calibration_cylinder
 ```
 终端发布齐次变换矩阵并将点云转到基坐标系下显示，如下图橙色点云所示
-![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example02.png)\
+![](https://github.com/B3mylq/curling_detect/blob/main/img/calibrate_example03.png)\
 __话题对照表__
 | 名称        | rviz类型   |  作用  |  源文件  |
 | :--------:   | :-----:  | :----:  | :----: |
@@ -96,18 +109,18 @@ rosrun curling_detect curling_detect
 cd 【ROS工作空间】/src/curling_detect/scripts
 chmod +x *.py
 ```
-2. 配置网络参数：打开curling_detect/launch/socket_control.launch文件，关注“<param” 开头的几行，根据注释在“value=”选项下配置网络参数
+2. 配置网络参数：打开curling_detect/launch/lidar_client.launch文件，关注“<param” 开头的几行，根据注释在“value=”选项下配置网络参数
 3. 主机解码方法：接收方的解码方法在curling_detect/scripts/udp_get_path.py文件中，打开该文件，在main函数前修改网络参数(参数含义与4.2中参数相同)，之后可以复制到主机上运行\
 解码得到一个轨迹列表，其中每个元素为含有四个浮点数元素的列表，四个数字依次为时间戳和该时间上的x、y、z坐标
 4. 运行socket收发模块：新建终端运行如下命令。
 ```bash
-roslaunch curling_detect socket_control.launch
+roslaunch curling_detect lidar_client.launch
 ```
 &emsp;&emsp;此时从机进入等待发送的模式，在收到激光雷达检测程序发送的Path后，主机发送以下命令控制从机的通讯内容。
 | 命令        | 作用   |
 | :--------:   | :-----:  |
 | SR     | 从机回复“===lidar start sending pose msg===”，并开始向主机发送以获取的冰壶轨迹信息 |
-| LS     |   从机回复“===lidar start recording path msg===”，并开始在curling_detect/records/rosbags/下记录检测到路径的rosbag，文件名为受到“LS”命令的【北京时间】。   |
-| LE  |    从机回复“===lidar stop recording path msg===”，并停止记录冰壶轨迹信息  |    
+| LS     |   从机回复“===lidar start recording path msg===”，并开始在curling_detect/records/rosbags/下记录检测到路径和点云原始数据的rosbag，文件名为受到“LS”命令的【北京时间】。   |
+| LE  |    从机回复“===lidar stop recording path msg===”，并停止记录冰壶轨迹信息和原始数据  |    
 
 &emsp;&emsp;主机的命令可以在4.2中更改，但先不要使用中文！
