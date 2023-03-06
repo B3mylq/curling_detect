@@ -8,6 +8,8 @@
     <!-- 雷达在基坐标系下的位置 -->
     <param name="lidar_x" value="23.1752" type="double" />
     <param name="lidar_y" value="-2.5" type="double" />
+    <!-- 是否在实机上运行 -->
+    <param name="in_real_machine" value="true" type="bool" />
 
     <node pkg="curling_detect" type="prompt_graph" name="prompt_graph" output="screen" />
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find curling_detect)/config/prompt_graph.rviz" required="true"/>

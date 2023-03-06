@@ -40,6 +40,7 @@ const float min_angle = -16, max_angle = 15;
 
 const float ANG = 57.2957795; // 弧度制转角度的比例因数
 double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
+bool in_real_machine;
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 pcl::PointCloud<pcl::PointXYZI>::Ptr lane_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -247,6 +248,13 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     vertical_angle_filter(0);
 
+    if(in_real_machine){
+        pcl::toROSMsg(*input_cloud, line_cloud_pub);
+        line_cloud_pub.header.stamp = ros::Time::now();
+        line_cloud_pub.header.frame_id = lidar_frame_id;
+        pub_line_cloud.publish(line_cloud_pub);
+    }
+
     int size;
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud1(new pcl::PointCloud<pcl::PointXYZI>);
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud2(new pcl::PointCloud<pcl::PointXYZI>);
@@ -290,6 +298,7 @@ int main(int argc, char *argv[])
     ros::param::get("marker2_y", marker2_y);
     ros::param::get("lidar_x", lidar_x);
     ros::param::get("lidar_y", lidar_y);
+    ros::param::get("in_real_machine", in_real_machine);
 
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CalibrateCallback);
     pub_line_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/line_cloud", 100, true);

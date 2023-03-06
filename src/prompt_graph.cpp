@@ -7,6 +7,7 @@
 #include <pcl/point_types.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/filters/extract_indices.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/distances.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -19,8 +20,75 @@
 
 using namespace std;
 
+// 激光雷达参数(rslidar-32线)
+string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
+const int vertical_num = 32, horizon_num = 1800;
+const float vertical_accuracy = 1, horizon_accuracy = 0.2;
+const float min_angle = -16, max_angle = 15;
+
+const float ANG = 57.2957795; // 弧度制转角度的比例因数
+double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
+bool in_real_machine;
+
 sensor_msgs::PointCloud2 pub_test_cloud;
+ros::Publisher vertical_cloud;
+sensor_msgs::PointCloud2 vertical_cloud_pub;
 pcl::PointCloud<pcl::PointXYZI>::Ptr test_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+
+void prehandler()
+{
+    // ROS_INFO("size before prehandler is %d", (int)cloud_filtered->size());
+    std::vector<int> mapping;
+    pcl::removeNaNFromPointCloud(*input_cloud, *input_cloud, mapping);
+    // ROS_INFO("size after prehandler is %d", (int)cloud_filtered->size());
+    if (lidar_frame_id == "rslidar")
+    {
+        for (int i = 0; i < (*input_cloud).size(); i++)
+        {
+            input_cloud->points[i].z = 0 - input_cloud->points[i].z;
+        }
+    }
+}
+
+void vertical_angle_filter(double target_angle)
+{
+    pcl::PointCloud<pcl::PointXYZI>::Ptr target_points(new pcl::PointCloud<pcl::PointXYZI>);
+
+    vector<vector<int>> idx_of_cols(horizon_num);
+    for (int idx = 0; idx < input_cloud->points.size(); idx++)
+    {
+        pcl::PointXYZI pt = input_cloud->points[idx];
+        int col_i = ((horizon_num * horizon_accuracy / 2) - atan2(pt.y, pt.x) * ANG) / horizon_accuracy;
+        idx_of_cols[col_i].push_back(idx);
+    }
+
+    for (int col = 0; col < idx_of_cols.size(); col++)
+    {
+        double min_dist = 420;
+        pcl::PointXYZI target_pt;
+
+        for (int i = 0; i < idx_of_cols[col].size(); i++)
+        {
+            int idx = idx_of_cols[col][i];
+            pcl::PointXYZI pt = input_cloud->points[idx];
+            double verticalAngle = atan2(pt.z, sqrt(pt.x * pt.x + pt.y * pt.y)) * 180 / M_PI;
+            double angle_dist = abs(verticalAngle - target_angle);
+            if (angle_dist < min_dist)
+            {
+                min_dist = angle_dist;
+                target_pt = pt;
+            }
+        }
+
+        if (min_dist < 420)
+        {
+            target_points->points.push_back(target_pt);
+        }
+    }
+    input_cloud->clear();
+    *input_cloud += *target_points;
+}
 
 void add_line_points(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud, pcl::PointXYZI start, pcl::PointXYZI end)
 {
@@ -84,6 +152,26 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr points_transform(pcl::PointCloud<pcl::Point
     return transformed_points;
 }
 
+void PGCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
+{
+    // ROS_INFO("publishing handled cloud");
+    ros::param::get("in_real_machine", in_real_machine);
+    // cout << "in real machine?" << in_real_machine << endl;
+
+    pcl::fromROSMsg(*point_msg, *input_cloud);
+
+    prehandler();
+
+    vertical_angle_filter(0);
+
+    if(in_real_machine == true){
+        pcl::toROSMsg(*input_cloud, vertical_cloud_pub);
+        vertical_cloud_pub.header.stamp = ros::Time::now();
+        vertical_cloud_pub.header.frame_id = lidar_frame_id;
+        vertical_cloud.publish(vertical_cloud_pub);
+    }
+}
+
 int main(int argc, char **argv)
 {
     string lidar_frame_id = "rslidar", lidar_pc_topic = "/rslidar_points";
@@ -94,15 +182,19 @@ int main(int argc, char **argv)
     ros::Publisher prompt_pub = nh.advertise<visualization_msgs::Marker>("/prompt_marker", 10);
     ros::Publisher calibrate_pub = nh.advertise<visualization_msgs::Marker>("/calibrate_marker", 10);
     ros::Publisher test_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/calibrate_points", 100, true);
+    vertical_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/vertical_cloud", 100, true);
     ros::Publisher tramsformed_points_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>(lidar_pc_topic, 100, true);
+    ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, PGCallback);
     visualization_msgs::Marker line_list, prompt_list, calibrate_list;
     double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
+    bool in_real_machine;
     ros::param::get("marker1_x", marker1_x);
     ros::param::get("marker1_y", marker1_y);
     ros::param::get("marker2_x", marker2_x);
     ros::param::get("marker2_y", marker2_y);
     ros::param::get("lidar_x", lidar_x);
     ros::param::get("lidar_y", lidar_y);
+    ros::param::get("in_real_machine", in_real_machine);
     ros::Rate r(10);
 
     line_list.header.frame_id = lidar_frame_id;
@@ -311,8 +403,11 @@ int main(int argc, char **argv)
     T.pretranslate(Eigen::Vector3d (-lidar_x, -lidar_y, 0));
     pcl::PointCloud<pcl::PointXYZI>::Ptr trasformed_cloud = points_transform(test_cloud, T);
 
+
     while (ros::ok())
     {
+        ros::spinOnce();
+
         marker_pub.publish(line_list);
         prompt_pub.publish(prompt_list);
         calibrate_pub.publish(calibrate_list);
@@ -325,8 +420,10 @@ int main(int argc, char **argv)
         pcl::toROSMsg(*trasformed_cloud, pub_test_cloud);
         pub_test_cloud.header.stamp = ros::Time::now();
         pub_test_cloud.header.frame_id = lidar_frame_id;
-        tramsformed_points_pub.publish(pub_test_cloud);
-
+        if(in_real_machine == false){
+            tramsformed_points_pub.publish(pub_test_cloud);
+        }
+        
         r.sleep();
     }
 }
