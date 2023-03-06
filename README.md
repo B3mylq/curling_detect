@@ -35,7 +35,7 @@ source devel/setup.bash
 roslaunch curling_detect lidar_calibration.launch
 ```
 &emsp;&emsp;此时可以看到如下界面，\
-![](https://github.com/B3mylq/curling_detect/blob/main/img/promtp_graph_cylinder.png)
+![](https://github.com/B3mylq/curling_detect/blob/main/img/prompt_graph_cylinder.png)
 &emsp;&emsp;蓝色为基坐标系下冰壶场地图，绿色为点云选取范围,请保证【点云选取范围内】除了冰壶和地面没有其他干扰。\
 &emsp;&emsp;目前假设激光雷达【只有yaw角转动】，建议用手机水平仪或其他方法使雷达的安装面水平 
 <!-- 1. 标定原理：通过四条线条确定两个基坐标系下已知的两个交点【即下文中的“标定点”】，通过两个交点在雷达坐标系下的位置确定雷达相对基坐标系的精确位置。
