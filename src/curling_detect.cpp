@@ -156,8 +156,8 @@ void curling_init()
 {
     curlingPose.header.frame_id = lidar_frame_id;
     curlingPose.header.stamp = ros::Time::now();
-    curlingPose.pose.position.x = -3.5;
-    curlingPose.pose.position.y = 8;
+    curlingPose.pose.position.x = 3;
+    curlingPose.pose.position.y = 10.6;
     curlingPose.pose.position.z = 0;
 
     curlingPath.header = curlingPose.header;
@@ -166,8 +166,9 @@ void curling_init()
     transformedCurlingPath.header = curlingPose.header;
     transformedCurlingPath.poses.clear();
 
-    x_max = x_min = r_max = r_min = 1.2;
-    y_max = y_min = 1.8;
+    x_max = x_min = r_max = r_min = 1.8;
+    y_max = 1.4;
+    y_min = 2.7;
     z_max = 0.4;
     z_min = 0.8;
 
@@ -206,6 +207,7 @@ void prehandler()
         for (int i = 0; i < (*cloud_filtered).size(); i++)
         {
             cloud_filtered->points[i].z = 0 - cloud_filtered->points[i].z;
+            cloud_filtered->points[i].x = 0 - cloud_filtered->points[i].x;
         }
     }
 }
@@ -434,8 +436,10 @@ void cluster_extract()
     }
 }
 
+bool detect_succeed;
 void get_curling_pose()
 {
+    detect_succeed = false;
     pcl::PointXYZ last_pose;
     last_pose.x = curlingPose.pose.position.x;
     last_pose.y = curlingPose.pose.position.y;
@@ -451,6 +455,15 @@ void get_curling_pose()
     double min_distance = 100;
     for (int i = 0; i < central_poses.size(); i++)
     {
+        Eigen::Vector3d temp_pose(central_poses[i].x,
+                                  central_poses[i].y,
+                                  central_poses[i].z);
+        
+        Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
+        if(transformed_pose[0] < -5 || transformed_pose[0] > 45 || transformed_pose[1] > 2.1 || transformed_pose[1] < -2.1){
+            continue;
+        }
+
         double current_distance = pcl::euclideanDistance(last_pose, central_poses[i]);
         if (current_distance < min_distance)
         {
@@ -463,6 +476,7 @@ void get_curling_pose()
     }
 
     double time_interval = ros::Time::now().toSec() - curlingPath.header.stamp.toSec();
+    // ROS_INFO("time now: %f, time last: %f", ros::Time::now().toSec(), curlingPath.header.stamp.toSec());
     if ((min_distance / time_interval) > 5)
     {
         ROS_WARN("fail to track curling at %f, speed: %f", ros::Time::now().toSec(), min_distance / time_interval);
@@ -476,6 +490,7 @@ void get_curling_pose()
         curlingPath.header.stamp = ros::Time::now();
         curlingPath.poses.push_back(curlingPose);
         ROS_INFO("success. ");
+        detect_succeed = true;
     }
     // ROS_INFO("min distance is %f", min_distance);
     pub_curling_pose.publish(curlingPose);
@@ -495,7 +510,9 @@ void transform_curling_path()
         transformedCurlingPath.poses[i].pose.position.y = transformed_pose[1];
         transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
     }
-    pub_transformed_curling_path.publish(transformedCurlingPath);
+    if(detect_succeed){
+        pub_transformed_curling_path.publish(transformedCurlingPath);
+    }
     // pathBag.write("/transformed_curling_path",ros::Time::now(),transformedCurlingPath);
 }
 
@@ -531,7 +548,7 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     position_filter();
 
     double distance = sqrt(pow(curlingPose.pose.position.x, 2) + pow(curlingPose.pose.position.y, 2) + pow(curlingPose.pose.position.z, 2));
-    if (distance < 18)
+    if (distance < 7.6)
     {
         plane_segment();
     }
@@ -567,7 +584,7 @@ int main(int argc, char *argv[])
             {
                 for (int j = 0; j < 4; j++)
                 {
-                    transform_matrix(i, j) = tf_params[i + j];
+                    transform_matrix(i, j) = tf_params[i*4 + j];
                 }
             }
         }

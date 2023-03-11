@@ -52,6 +52,8 @@ sensor_msgs::PointCloud2 line_cloud_pub;
 sensor_msgs::PointCloud2 check_cloud_pub;
 
 Eigen::Isometry3d transform_matrix = Eigen::Isometry3d::Identity();
+Eigen::Isometry3d transform_matrix_ave;
+int round_count = 0;
 
 vector<double> tf_params;
 bool calibrate_flag = false;
@@ -67,6 +69,7 @@ void prehandler()
         for (int i = 0; i < (*input_cloud).size(); i++)
         {
             input_cloud->points[i].z = 0 - input_cloud->points[i].z;
+            input_cloud->points[i].x = 0 - input_cloud->points[i].x;
         }
     }
 }
@@ -152,23 +155,6 @@ void vertical_angle_filter(double target_angle)
     *input_cloud += *target_points;
 }
 
-Eigen::Vector2d get_curling_centre(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud)
-{
-    Eigen::Vector2d result(-1, -1);
-
-    pcl::SampleConsensusModelCircle3D<pcl::PointXYZI>::Ptr model_circle3D(new pcl::SampleConsensusModelCircle3D<pcl::PointXYZI>(point_cloud)); // 选择拟合点云与几何模型
-    pcl::RandomSampleConsensus<pcl::PointXYZI> ransac(model_circle3D);                                                                         // 创建随机采样一致性对象
-    ransac.setDistanceThreshold(0.02);                                                                                                         // 设置距离阈值，与模型距离小于0.01的点作为内点
-    ransac.setMaxIterations(7600);                                                                                                             // 设置最大迭代次数
-    ransac.computeModel();                                                                                                                     // 执行模型估计
-    Eigen::VectorXf coefficient;
-    ransac.getModelCoefficients(coefficient);
-
-    result[0] = coefficient[0];
-    result[1] = coefficient[1];
-    return result;
-}
-
 pcl::PointXYZ get_central_pose(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud)
 {
     pcl::PointXYZ central_pose;
@@ -188,6 +174,32 @@ pcl::PointXYZ get_central_pose(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud)
     return central_pose;
 }
 
+Eigen::Vector2d get_curling_centre(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud)
+{
+    Eigen::Vector2d result(-1, -1);
+
+    pcl::SampleConsensusModelCircle3D<pcl::PointXYZI>::Ptr model_circle3D(new pcl::SampleConsensusModelCircle3D<pcl::PointXYZI>(point_cloud)); // 选择拟合点云与几何模型
+    pcl::RandomSampleConsensus<pcl::PointXYZI> ransac(model_circle3D);                                                                         // 创建随机采样一致性对象
+    ransac.setDistanceThreshold(0.02);                                                                                                         // 设置距离阈值，与模型距离小于0.01的点作为内点
+    ransac.setMaxIterations(7600);                                                                                                             // 设置最大迭代次数
+    ransac.computeModel();                                                                                                                     // 执行模型估计
+    Eigen::VectorXf coefficient;
+    ransac.getModelCoefficients(coefficient);
+
+    result[0] = coefficient[0];
+    result[1] = coefficient[1];
+    double curling_radiu = coefficient[3];
+
+    if(0.05 < curling_radiu && curling_radiu < 0.2){
+        return result;
+    }else{
+        pcl::PointXYZ central_pose = get_central_pose(point_cloud);
+        result[0] = central_pose.x;
+        result[1] = central_pose.y;
+        return result;
+    }
+}
+
 Eigen::Isometry3d get_rotation(Eigen::Vector3d vectorBefore, Eigen::Vector3d vectorAfter)
 {
     Eigen::Matrix3d rotMatrix = Eigen::Quaterniond::FromTwoVectors(vectorBefore, vectorAfter).toRotationMatrix();
@@ -201,9 +213,9 @@ Eigen::Isometry3d get_rotation(Eigen::Vector3d vectorBefore, Eigen::Vector3d vec
 Eigen::Isometry3d get_translation(Eigen::Isometry3d rot_tf, Eigen::Vector3d vectorBefore, Eigen::Vector3d vectorAfter)
 {
     Eigen::Vector3d temp_vector = rot_tf * vectorBefore;
-    Eigen::Vector3d translation(vectorAfter[0] - vectorBefore[0],
-                                vectorAfter[1] - vectorBefore[1],
-                                vectorAfter[2] - vectorBefore[2]);
+    Eigen::Vector3d translation(vectorAfter[0] - temp_vector[0],
+                                vectorAfter[1] - temp_vector[1],
+                                vectorAfter[2] - temp_vector[2]);
     Eigen::Isometry3d homo_tf = rot_tf;
     homo_tf.pretranslate(translation);
 
@@ -221,6 +233,16 @@ void calibrate(Eigen::Vector2d curling1_centre, Eigen::Vector2d curling2_centre)
     transform_matrix = get_translation(transform_matrix, vectorBefore, vectorAfter);
     std::cout << "transform_matrix: " << std::endl
               << transform_matrix.matrix() << std::endl;
+
+    round_count += 1;
+    transform_matrix_ave.matrix() += transform_matrix.matrix();
+
+    if(round_count > 10){
+        transform_matrix_ave.matrix() = transform_matrix_ave.matrix()/round_count;
+        std::cout << "transform_matrix_ave: " << std::endl
+              << transform_matrix_ave.matrix() << std::endl;
+        calibrate_flag = true;
+    }
 }
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr points_transform(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud, Eigen::Isometry3d tf)
@@ -260,8 +282,10 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud2(new pcl::PointCloud<pcl::PointXYZI>);
     double x_offset1 = marker1_x - lidar_x, y_offset1 = marker1_y - lidar_y;
     double x_offset2 = marker2_x - lidar_x, y_offset2 = marker2_y - lidar_y;
-    *filtered_cloud1 += *(position_filter(x_offset1 - 0.5, y_offset1 + 0.5, 0));
-    *filtered_cloud2 += *(position_filter(x_offset2 - 0.5, y_offset2 + 0.5, 0));
+    // *filtered_cloud1 += *(position_filter(x_offset1 - 0.5, y_offset1 + 0.5, 0));
+    // *filtered_cloud2 += *(position_filter(x_offset2 - 0.5, y_offset2 + 0.5, 0));
+    *filtered_cloud1 += *(position_filter(3, 13, 0));
+    *filtered_cloud2 += *(position_filter(2, -9, 0));
     Eigen::Vector2d curling1_centre, curling2_centre;
     curling1_centre = get_curling_centre(filtered_cloud1);
     curling2_centre = get_curling_centre(filtered_cloud2);
@@ -311,18 +335,19 @@ int main(int argc, char *argv[])
 
         if (calibrate_flag)
         {
-            std::cout << "transform_matrix: " << std::endl
-                      << transform_matrix.matrix() << std::endl;
+            std::cout << "transform_matrix_ave: " << std::endl
+                      << transform_matrix_ave.matrix() << std::endl;
             break;
         }
     }
 
-    Eigen::Matrix4d tf_matrix = transform_matrix.matrix();
+    Eigen::Matrix4d tf_matrix = transform_matrix_ave.matrix();
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)
         {
             tf_params.push_back(tf_matrix(i, j));
+            cout << tf_params[tf_params.size() - 1] << endl;;
         }
     }
     ros::param::set("lidar_tf_params", tf_params);
@@ -333,7 +358,7 @@ int main(int argc, char *argv[])
     {
         for (int j = 0; j < 4; j++)
         {
-            test_tf(i, j) = tf_params[i + j];
+            test_tf(i, j) = tf_params[i*4 + j];
         }
     }
     std::cout << "test_tf: " << std::endl

@@ -47,6 +47,8 @@ void prehandler()
         for (int i = 0; i < (*input_cloud).size(); i++)
         {
             input_cloud->points[i].z = 0 - input_cloud->points[i].z;
+            input_cloud->points[i].x = 0 - input_cloud->points[i].x;
+            // input_cloud->points[i].y = 0 - input_cloud->points[i].y;
         }
     }
 }

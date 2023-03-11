@@ -287,9 +287,9 @@ Eigen::Isometry3d get_rotation(Eigen::Vector3d vectorBefore, Eigen::Vector3d vec
 
 Eigen::Isometry3d get_translation(Eigen::Isometry3d rot_tf, Eigen::Vector3d vectorBefore, Eigen::Vector3d vectorAfter){
     Eigen::Vector3d temp_vector = rot_tf*vectorBefore;
-    Eigen::Vector3d translation(vectorAfter[0] - vectorBefore[0],
-                                vectorAfter[1] - vectorBefore[1],
-                                vectorAfter[2] - vectorBefore[2]);
+    Eigen::Vector3d translation(vectorAfter[0] - temp_vector[0],
+                                vectorAfter[1] - temp_vector[1],
+                                vectorAfter[2] - temp_vector[2]);
     Eigen::Isometry3d homo_tf = rot_tf;
     homo_tf.pretranslate(translation);
     

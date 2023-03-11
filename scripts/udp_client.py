@@ -63,14 +63,17 @@ class LidarClient:
         # print(curling_path.poses)
         if self.path_recording and self.path is not None:
             current_pose_stamped = []
-            delta_t = curling_path.poses[-1].header.stamp.to_sec() - self.last_timestep if self.last_timestep is not None else 0.0
-            self.last_timestep = curling_path.poses[-1].header.stamp.to_sec()
-            current_pose_stamped.append(str(delta_t))
-            current_pose_stamped.append(str(np.round(curling_path.poses[-1].pose.position.x,4)))
-            current_pose_stamped.append(str(np.round(curling_path.poses[-1].pose.position.y,4)))
-            current_pose_stamped.append(str(np.round(curling_path.poses[-1].pose.position.z,4)))
-            current_pose_stamped = "|".join(current_pose_stamped)
-            self.path.append(current_pose_stamped)
+            if(len(curling_path.poses) < 1):
+                print("warning: current curling path is empty")
+            else:
+                delta_t = curling_path.poses[-1].header.stamp.to_sec() - self.last_timestep if self.last_timestep is not None else 0.0
+                self.last_timestep = curling_path.poses[-1].header.stamp.to_sec()
+                current_pose_stamped.append(str(delta_t))
+                current_pose_stamped.append(str(np.round(curling_path.poses[-1].pose.position.x,4)))
+                current_pose_stamped.append(str(np.round(curling_path.poses[-1].pose.position.y,4)))
+                current_pose_stamped.append(str(np.round(curling_path.poses[-1].pose.position.z,4)))
+                current_pose_stamped = "|".join(current_pose_stamped)
+                self.path.append(current_pose_stamped)
 
         # 获取路径的最后一个（当前时刻）位置
         # # current_pose_stamped.append(str(curling_path.poses[-1].header.stamp.to_sec()))
