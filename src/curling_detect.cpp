@@ -168,7 +168,7 @@ void curling_init()
 
     x_max = x_min = r_max = r_min = 1.8;
     y_max = 1.4;
-    y_min = 2.7;
+    y_min = 4.9;
     z_max = 0.4;
     z_min = 0.8;
 
@@ -291,7 +291,7 @@ void rough_cluster()
     (curling_vertical_size / distance * ANG / vertical_accuracy > 0) ? ver_lidar_num = ceil(curling_vertical_size / distance * ANG / vertical_accuracy) : ver_lidar_num = 1;
 
     max_size = (hori_lidar_num + 1) * (ver_lidar_num + 1) * 1.2;
-    (hori_lidar_num >= 8 && ver_lidar_num >= 2) ? min_size = ceil(hori_lidar_num * ver_lidar_num * 0.2) : min_size = 4;
+    (hori_lidar_num >= 8 && ver_lidar_num >= 2) ? min_size = ceil(hori_lidar_num * ver_lidar_num * 0.15) : min_size = 4;
     // min_size = 60;
     distance < 9.6 ? cluster_tolerance = vertical_accuracy / ANG * distance * 1.4 : cluster_tolerance = horizon_accuracy / ANG * distance * 2.7;
 
@@ -548,7 +548,7 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     position_filter();
 
     double distance = sqrt(pow(curlingPose.pose.position.x, 2) + pow(curlingPose.pose.position.y, 2) + pow(curlingPose.pose.position.z, 2));
-    if (distance < 7.6)
+    if (distance < 6.7)
     {
         plane_segment();
     }
