@@ -1,6 +1,6 @@
 <launch>
     <!-- 主机ip地址 -->
-    <param name="master_ip_address" value="192.168.101.3" type="str" />
+    <param name="master_ip_address" value="10.6.167.60" type="str" />
     <!-- 主机发送指令的端口号 -->
     <param name="master_command_port" value="1145" type="int" />
 

@@ -27,7 +27,7 @@ const float vertical_accuracy = 1, horizon_accuracy = 0.2;
 const float min_angle = -16, max_angle = 15;
 
 const float ANG = 57.2957795; // 弧度制转角度的比例因数
-double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
+double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y, lidar_yaw;
 bool in_real_machine;
 
 sensor_msgs::PointCloud2 pub_test_cloud;
@@ -154,6 +154,15 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr points_transform(pcl::PointCloud<pcl::Point
     return transformed_points;
 }
 
+void rotate_pose(geometry_msgs::Point &pose, Eigen::Matrix3d rotation_matrix){
+    Eigen::Vector3d temp_pose(pose.x, pose.y, pose.z);
+    Eigen::Vector3d transformed_pose = rotation_matrix*temp_pose;
+
+    pose.x = transformed_pose[0];
+    pose.y = transformed_pose[1];
+    pose.z = transformed_pose[2];
+}
+
 void PGCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 {
     // ROS_INFO("publishing handled cloud");
@@ -190,14 +199,15 @@ int main(int argc, char **argv)
     visualization_msgs::Marker line_list, prompt_list, calibrate_list;
     double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
     bool in_real_machine;
-    ros::param::get("marker1_x", marker1_x);
-    ros::param::get("marker1_y", marker1_y);
-    ros::param::get("marker2_x", marker2_x);
-    ros::param::get("marker2_y", marker2_y);
-    ros::param::get("lidar_x", lidar_x);
-    ros::param::get("lidar_y", lidar_y);
-    ros::param::get("in_real_machine", in_real_machine);
-    ros::Rate r(10);
+    marker1_x = ros::param::param("marker1_x", 8.2296);
+    marker1_y = ros::param::param("marker1_y", 0);
+    marker2_x = ros::param::param("marker2_x", 30.1752);
+    marker2_y = ros::param::param("marker2_y", 0);
+    lidar_x = ros::param::param("lidar_x", 23.1752);
+    lidar_y = ros::param::param("lidar_y", -2.5);
+    lidar_yaw = ros::param::param("lidar_yaw", 0);
+    in_real_machine = ros::param::param("in_real_machine", true);
+    Eigen::AngleAxisd rotation_vector(-lidar_yaw/ANG, Eigen::Vector3d (0, 0, 1));
 
     line_list.header.frame_id = lidar_frame_id;
     line_list.header.stamp = ros::Time::now();
@@ -303,8 +313,9 @@ int main(int argc, char **argv)
     double x_offset2 = marker2_x - lidar_x, y_offset2 = marker2_y - lidar_y;
     double range = 1;
     origin.z = 0.1;
-    origin.y = y_offset1 + 0.5;
-    origin.x = x_offset1 - 0.5;
+    origin.y = y_offset1;
+    origin.x = x_offset1;
+    rotate_pose(origin, rotation_vector.matrix());
     p = origin; p.x = origin.x + range; p.y = origin.y + range;
     prompt_list.points.push_back(p);
     p.y = origin.y - range;
@@ -319,8 +330,9 @@ int main(int argc, char **argv)
     p.x = origin.x + range;
     prompt_list.points.push_back(p);
     origin.z = 0.1;
-    origin.y = y_offset2 + 0.5;
-    origin.x = x_offset2 - 0.5;
+    origin.y = y_offset2;
+    origin.x = x_offset2;
+    rotate_pose(origin, rotation_vector.matrix());
     p = origin; p.x = origin.x + range; p.y = origin.y + range;
     prompt_list.points.push_back(p);
     p.y = origin.y - range;
@@ -405,7 +417,14 @@ int main(int argc, char **argv)
     T.pretranslate(Eigen::Vector3d (-lidar_x, -lidar_y, 0));
     pcl::PointCloud<pcl::PointXYZI>::Ptr trasformed_cloud = points_transform(test_cloud, T);
 
+    geometry_msgs::Point test_pose;
+    test_pose.x = 1;
+    test_pose.y = 0;
+    test_pose.z = 0;
+    rotate_pose(test_pose, rotation_vector.matrix());
+    ROS_INFO("after rotation:(%f, %f, %f)", test_pose.x, test_pose.y, test_pose.z);
 
+    ros::Rate r(10);   
     while (ros::ok())
     {
         ros::spinOnce();

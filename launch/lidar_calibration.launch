@@ -5,9 +5,10 @@
     <!-- 标定点2在基坐标系下的位置 -->
     <param name="marker2_x" value="30.1752" type="double" />
     <param name="marker2_y" value="0" type="double" />
-    <!-- 雷达在基坐标系下的位置 -->
-    <param name="lidar_x" value="23.1752" type="double" />
+    <!-- 雷达在基坐标系下的位置和yaw轴偏角(角度制) -->
+    <param name="lidar_x" value="21.1752" type="double" />
     <param name="lidar_y" value="-2.5" type="double" />
+    <param name="lidar_yaw" value="90" type="double" />
     <!-- 是否在实机上运行 -->
     <param name="in_real_machine" value="true" type="bool" />
 

@@ -2,9 +2,6 @@
 #coding=utf-8
 import rospy
 import rosbag
-from std_msgs.msg import Int8
-from std_msgs.msg import Int8MultiArray
-from std_msgs.msg import String
 from nav_msgs.msg import Path
 from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import PoseStamped
@@ -35,19 +32,23 @@ class LidarClient:
 
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.sock.connect((host,port))
-        print(f"{host} {port} connected") 
+        # print(f"{host} {port} connected") 
+        print("connected!")
         thread = threading.Thread(target = self.receive)
         thread.start()
 
         self.pose_send_command = False 
         self.start_recording = False 
         self.stop_recording = False 
-        self.path_recording = False
-        self.pointcloud_recording = False
         self.bag = None
         self.last_path = None 
         self.path = None
         self.last_timestep = None 
+
+        self.path_recording = False
+        self.pointcloud_recording = False
+        self.detecting = False
+        rospy.set_param("lidar_detecting", False)
 
         sub_path = rospy.Subscriber("/transformed_curling_path", Path ,self.process_path,queue_size=10)
         sub_pc2 = rospy.Subscriber("/rslidar_points", PointCloud2, self.process_pc2, queue_size=20)
@@ -132,6 +133,7 @@ class LidarClient:
 
                         self.path_recording = True 
                         self.pointcloud_recording = True
+                        rospy.set_param("lidar_detecting", True)
                         self.bag = rosbag.Bag(self._get_bag_name(),'w')
 
                         # self.start_recording = False
@@ -146,6 +148,7 @@ class LidarClient:
                     self.last_timestep = None 
                     self.path_recording = False
                     self.pointcloud_recording = False
+                    rospy.set_param("lidar_detecting", False)
                     if self.bag is not None:
                         time.sleep(1)
                         self.bag.close()

@@ -39,7 +39,7 @@ const float vertical_accuracy = 1, horizon_accuracy = 0.2;
 const float min_angle = -16, max_angle = 15;
 
 const float ANG = 57.2957795; // 弧度制转角度的比例因数
-double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y;
+double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y, lidar_yaw;
 bool in_real_machine;
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -72,6 +72,15 @@ void prehandler()
             input_cloud->points[i].x = 0 - input_cloud->points[i].x;
         }
     }
+}
+
+void rotate_pose(geometry_msgs::Point &pose, Eigen::Matrix3d rotation_matrix){
+    Eigen::Vector3d temp_pose(pose.x, pose.y, pose.z);
+    Eigen::Vector3d transformed_pose = rotation_matrix*temp_pose;
+
+    pose.x = transformed_pose[0];
+    pose.y = transformed_pose[1];
+    pose.z = transformed_pose[2];
 }
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr position_filter(double x, double y, double z)
@@ -280,12 +289,17 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     int size;
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud1(new pcl::PointCloud<pcl::PointXYZI>);
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud2(new pcl::PointCloud<pcl::PointXYZI>);
-    double x_offset1 = marker1_x - lidar_x, y_offset1 = marker1_y - lidar_y;
-    double x_offset2 = marker2_x - lidar_x, y_offset2 = marker2_y - lidar_y;
-    // *filtered_cloud1 += *(position_filter(x_offset1 - 0.5, y_offset1 + 0.5, 0));
-    // *filtered_cloud2 += *(position_filter(x_offset2 - 0.5, y_offset2 + 0.5, 0));
-    *filtered_cloud1 += *(position_filter(3, 13, 0));
-    *filtered_cloud2 += *(position_filter(2, -9, 0));
+    geometry_msgs::Point offset1, offset2;
+    offset1.x = marker1_x - lidar_x; offset1.y = marker1_y - lidar_y;
+    offset2.x = marker2_x - lidar_x, offset2.y = marker2_y - lidar_y;
+    Eigen::AngleAxisd rotation_vector(-lidar_yaw/ANG, Eigen::Vector3d (0, 0, 1));
+    rotate_pose(offset1, rotation_vector.matrix());
+    rotate_pose(offset2, rotation_vector.matrix());
+    ROS_INFO("after rotation1:(%f, %f, %f)", offset1.x, offset1.y, offset1.z);
+    *filtered_cloud1 += *(position_filter(offset1.x, offset1.y, 0));
+    *filtered_cloud2 += *(position_filter(offset2.x, offset2.y, 0));
+    // *filtered_cloud1 += *(position_filter(3, 13, 0));
+    // *filtered_cloud2 += *(position_filter(2, -9, 0));
     Eigen::Vector2d curling1_centre, curling2_centre;
     curling1_centre = get_curling_centre(filtered_cloud1);
     curling2_centre = get_curling_centre(filtered_cloud2);
@@ -316,13 +330,14 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "lidar_calibrate_cylinder");
     ros::NodeHandle nh;
 
-    ros::param::get("marker1_x", marker1_x);
-    ros::param::get("marker1_y", marker1_y);
-    ros::param::get("marker2_x", marker2_x);
-    ros::param::get("marker2_y", marker2_y);
-    ros::param::get("lidar_x", lidar_x);
-    ros::param::get("lidar_y", lidar_y);
-    ros::param::get("in_real_machine", in_real_machine);
+    marker1_x = ros::param::param("marker1_x", 8.2296);
+    marker1_y = ros::param::param("marker1_y", 0);
+    marker2_x = ros::param::param("marker2_x", 30.1752);
+    marker2_y = ros::param::param("marker2_y", 0);
+    lidar_x = ros::param::param("lidar_x", 23.1752);
+    lidar_y = ros::param::param("lidar_y", -2.5);
+    lidar_yaw = ros::param::param("lidar_yaw", 0);
+    in_real_machine = ros::param::param("in_real_machine", true);
 
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CalibrateCallback);
     pub_line_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZI>>("/line_cloud", 100, true);

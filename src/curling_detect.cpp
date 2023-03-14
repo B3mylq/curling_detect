@@ -37,6 +37,10 @@
 using namespace std;
 
 Eigen::Isometry3d transform_matrix = Eigen::Isometry3d::Identity();
+geometry_msgs::Point lidar_pose;
+double marker1_x, marker1_y, marker2_x, marker2_y, lidar_x, lidar_y, lidar_yaw;
+bool in_real_machine;
+
 geometry_msgs::PoseStamped curlingPose;
 nav_msgs::Path curlingPath, transformedCurlingPath;
 float x_max, x_min, y_max, y_min, z_max, z_min, r_max, r_min;
@@ -101,10 +105,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::Poin
 pcl::PointIndices::Ptr inliers_pose(new pcl::PointIndices());
 pcl::ExtractIndices<pcl::PointXYZ> extract_pose;
 // 平面模型的分割对象
-pcl::SACSegmentation<pcl::PointXYZ> seg;
-pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZ>());
+// pcl::SACSegmentation<pcl::PointXYZ> seg;
+// pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+// pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+// pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZ>());
 // 聚类参数
 int min_size, max_size;
 double cluster_tolerance;
@@ -156,8 +160,8 @@ void curling_init()
 {
     curlingPose.header.frame_id = lidar_frame_id;
     curlingPose.header.stamp = ros::Time::now();
-    curlingPose.pose.position.x = 3;
-    curlingPose.pose.position.y = 10.6;
+    curlingPose.pose.position.x = 8.1;
+    curlingPose.pose.position.y = 0;
     curlingPose.pose.position.z = 0;
 
     curlingPath.header = curlingPose.header;
@@ -166,33 +170,35 @@ void curling_init()
     transformedCurlingPath.header = curlingPose.header;
     transformedCurlingPath.poses.clear();
 
-    x_max = x_min = r_max = r_min = 1.8;
-    y_max = 1.4;
-    y_min = 4.9;
+    r_max = r_min = 1;
+    x_max = 3.6;
+    x_min = 1.2;
+    y_max = 1.8;
+    y_min = 1.8;
     z_max = 0.4;
     z_min = 0.8;
 
     ros::param::set("/use_sim_time",true);
 
     // 设置平面分割的参数
-    seg.setOptimizeCoefficients(true);
-    seg.setModelType(pcl::SACMODEL_PLANE);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(100);
-    seg.setDistanceThreshold(0.02);
+    // seg.setOptimizeCoefficients(true);
+    // seg.setModelType(pcl::SACMODEL_PLANE);
+    // seg.setMethodType(pcl::SAC_RANSAC);
+    // seg.setMaxIterations(100);
+    // seg.setDistanceThreshold(0.02);
 
     // 初始化记录包裹
-    char curpwd[100];
-    getcwd(curpwd, 100);
-    string dir_path(curpwd); // 获取当前执行程序的路径
-    string file_path = "/src/curling_detect/records/rosbags/";
-    time_t timep;
-    time(&timep);
-    char *current_time = asctime(gmtime(&timep));
-    string file_name = space_to_symbol(current_time);
-    file_name.pop_back();
-    pathbag_filename = dir_path + file_path + file_name + ".bag";
-    cout << "bag stored as: " << pathbag_filename << endl;
+    // char curpwd[100];
+    // getcwd(curpwd, 100);
+    // string dir_path(curpwd); // 获取当前执行程序的路径
+    // string file_path = "/src/curling_detect/records/rosbags/";
+    // time_t timep;
+    // time(&timep);
+    // char *current_time = asctime(gmtime(&timep));
+    // string file_name = space_to_symbol(current_time);
+    // file_name.pop_back();
+    // pathbag_filename = dir_path + file_path + file_name + ".bag";
+    // cout << "bag stored as: " << pathbag_filename << endl;
     // pathBag.open(pathbag_filename,rosbag::BagMode::Write);
 }
 
@@ -204,10 +210,18 @@ void prehandler()
     // ROS_INFO("size after prehandler is %d", (int)cloud_filtered->size());
     if (lidar_frame_id == "rslidar")
     {
+        Eigen::Vector3d temp_pose, transformed_pose;
         for (int i = 0; i < (*cloud_filtered).size(); i++)
         {
             cloud_filtered->points[i].z = 0 - cloud_filtered->points[i].z;
             cloud_filtered->points[i].x = 0 - cloud_filtered->points[i].x;
+
+            temp_pose << cloud_filtered->points[i].x,
+                         cloud_filtered->points[i].y,
+                         cloud_filtered->points[i].z;
+            transformed_pose = transform_matrix * temp_pose;
+            cloud_filtered->points[i].x = transformed_pose[0];
+            cloud_filtered->points[i].y = transformed_pose[1];
         }
     }
 }
@@ -285,7 +299,9 @@ void plane_segment()
 
 void rough_cluster()
 {
-    double distance = sqrt(pow(curlingPose.pose.position.x, 2) + pow(curlingPose.pose.position.y, 2) + pow(curlingPose.pose.position.z, 2));
+    double distance = sqrt(pow((curlingPose.pose.position.x - lidar_pose.x), 2) + 
+                           pow((curlingPose.pose.position.y - lidar_pose.y), 2) + 
+                           pow((curlingPose.pose.position.z - lidar_pose.z), 2));
     int hori_lidar_num, ver_lidar_num;
     (curling_horizon_size / distance * ANG / horizon_accuracy > 1) ? hori_lidar_num = ceil(curling_horizon_size / distance * ANG / horizon_accuracy) : hori_lidar_num = 2;
     (curling_vertical_size / distance * ANG / vertical_accuracy > 0) ? ver_lidar_num = ceil(curling_vertical_size / distance * ANG / vertical_accuracy) : ver_lidar_num = 1;
@@ -455,14 +471,14 @@ void get_curling_pose()
     double min_distance = 100;
     for (int i = 0; i < central_poses.size(); i++)
     {
-        Eigen::Vector3d temp_pose(central_poses[i].x,
-                                  central_poses[i].y,
-                                  central_poses[i].z);
+        // Eigen::Vector3d temp_pose(central_poses[i].x,
+        //                           central_poses[i].y,
+        //                           central_poses[i].z);
         
-        Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
-        if(transformed_pose[0] < -5 || transformed_pose[0] > 45 || transformed_pose[1] > 2.1 || transformed_pose[1] < -2.1){
-            continue;
-        }
+        // Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
+        // if(transformed_pose[0] < -5 || transformed_pose[0] > 45 || transformed_pose[1] > 2.1 || transformed_pose[1] < -2.1){
+        //     continue;
+        // }
 
         double current_distance = pcl::euclideanDistance(last_pose, central_poses[i]);
         if (current_distance < min_distance)
@@ -500,16 +516,16 @@ void get_curling_pose()
 void transform_curling_path()
 {
     transformedCurlingPath = curlingPath;
-    for (int i = 0; i < transformedCurlingPath.poses.size(); i++)
-    {
-        Eigen::Vector3d temp_pose(transformedCurlingPath.poses[i].pose.position.x,
-                                  transformedCurlingPath.poses[i].pose.position.y,
-                                  transformedCurlingPath.poses[i].pose.position.z);
-        Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
-        transformedCurlingPath.poses[i].pose.position.x = transformed_pose[0];
-        transformedCurlingPath.poses[i].pose.position.y = transformed_pose[1];
-        transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
-    }
+    // for (int i = 0; i < transformedCurlingPath.poses.size(); i++)
+    // {
+    //     Eigen::Vector3d temp_pose(transformedCurlingPath.poses[i].pose.position.x,
+    //                               transformedCurlingPath.poses[i].pose.position.y,
+    //                               transformedCurlingPath.poses[i].pose.position.z);
+    //     Eigen::Vector3d transformed_pose = transform_matrix * temp_pose;
+    //     transformedCurlingPath.poses[i].pose.position.x = transformed_pose[0];
+    //     transformedCurlingPath.poses[i].pose.position.y = transformed_pose[1];
+    //     transformedCurlingPath.poses[i].pose.position.z = transformed_pose[2];
+    // }
     if(detect_succeed){
         pub_transformed_curling_path.publish(transformedCurlingPath);
     }
@@ -535,6 +551,12 @@ void reset()
 
 void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 {
+    if(ros::param::param("lidar_detecting", false) == false){
+        ROS_INFO("WAITING FOR DETECT COMMAND");
+        curling_init();
+        reset();
+        return;
+    }
 
     cout << "====== round begin ======" << endl;
 
@@ -547,7 +569,9 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     position_filter();
 
-    double distance = sqrt(pow(curlingPose.pose.position.x, 2) + pow(curlingPose.pose.position.y, 2) + pow(curlingPose.pose.position.z, 2));
+    double distance = sqrt(pow((curlingPose.pose.position.x - lidar_pose.x), 2) + 
+                           pow((curlingPose.pose.position.y - lidar_pose.y), 2) + 
+                           pow((curlingPose.pose.position.z - lidar_pose.z), 2));
     if (distance < 6.7)
     {
         plane_segment();
@@ -594,6 +618,8 @@ int main(int argc, char *argv[])
         ROS_WARN("no transform matrix received");
         transform_matrix = Eigen::Isometry3d::Identity();
     }
+    lidar_pose.x = transform_matrix(0, 3);
+    lidar_pose.y = transform_matrix(1, 3);
 
     pub_filtered_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/filtered_cloud", 100, true);
     pub_clustered_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/clustered_cloud", 100, true);
