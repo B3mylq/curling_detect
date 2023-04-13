@@ -53,6 +53,15 @@ ros::Publisher pub_transformed_curling_path;
 sensor_msgs::PointCloud2 point_in;
 sensor_msgs::PointCloud2 pub_pc;
 
+// 为ppt演示发布的点云
+ros::Publisher pub_origin_cloud;
+ros::Publisher pub_1_cloud;
+ros::Publisher pub_2_cloud;
+ros::Publisher pub_3_cloud;
+ros::Publisher pub_4_cloud;
+ros::Publisher pub_5_cloud;
+ros::Publisher pub_6_cloud;
+
 rosbag::Bag pathBag;
 string pathbag_filename;
 
@@ -226,10 +235,14 @@ void prehandler()
     }
 }
 
+int detect_count = 0;
 void position_filter()
 {
     // 根据冰壶位置和运动界限（方框+球形限制）排除范围外的点
-
+    if(detect_count > 5){
+        y_max = 0.42;
+        y_min = 0.42;
+    }
     vector<double> poseLimit = {curlingPose.pose.position.x - x_min, -(curlingPose.pose.position.x + x_max),
                                 curlingPose.pose.position.y - y_min, -(curlingPose.pose.position.y + y_max),
                                 curlingPose.pose.position.z - z_min, -(curlingPose.pose.position.z + z_max)};
@@ -276,7 +289,7 @@ void plane_segment()
     seg.setModelType(pcl::SACMODEL_PLANE); // 设置模型类型
     seg.setMethodType(pcl::SAC_RANSAC);    // 设置随机采样一致性方法类型
     seg.setMaxIterations(1200);            // 最大迭代次数
-    seg.setDistanceThreshold(0.03);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
+    seg.setDistanceThreshold(0.05);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
     seg.setInputCloud(cloud_filtered);     // 输入所需要分割的点云对象
     // 引发分割实现，存储分割结果到点几何inliers及存储平面模型的系数coefficients
     seg.segment(*inliers, *coefficients);
@@ -507,6 +520,7 @@ void get_curling_pose()
         curlingPath.poses.push_back(curlingPose);
         ROS_INFO("success. ");
         detect_succeed = true;
+        detect_count += 1;
     }
     // ROS_INFO("min distance is %f", min_distance);
     pub_curling_pose.publish(curlingPose);
@@ -551,12 +565,12 @@ void reset()
 
 void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 {
-    if(ros::param::param("lidar_detecting", false) == false){
-        ROS_INFO("WAITING FOR DETECT COMMAND");
-        curling_init();
-        reset();
-        return;
-    }
+    // if(ros::param::param("lidar_detecting", false) == false){
+    //     ROS_INFO("WAITING FOR DETECT COMMAND");
+    //     curling_init();
+    //     reset();
+    //     return;
+    // }
 
     cout << "====== round begin ======" << endl;
 
@@ -576,6 +590,11 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     {
         plane_segment();
     }
+
+    // please delete
+    pcl::toROSMsg(*cloud_filtered, pub_pc);
+    pub_pc.header = point_in.header;
+    pub_2_cloud.publish(pub_pc);
 
     rough_cluster();
 
@@ -627,6 +646,13 @@ int main(int argc, char *argv[])
     pub_curling_path = nh.advertise<nav_msgs::Path>("/curling_path", 10, true);
     pub_transformed_curling_path = nh.advertise<nav_msgs::Path>("/transformed_curling_path", 10, true);
     ros::Subscriber pointCLoudSub = nh.subscribe<sensor_msgs::PointCloud2>(lidar_pc_topic, 100, CurlingDetectCallback);
+
+    pub_1_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/pub_1_cloud", 100, true);
+    pub_2_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/pub_2_cloud", 100, true);
+    pub_3_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/pub_3_cloud", 100, true);
+    pub_4_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/pub_4_cloud", 100, true);
+    pub_5_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/pub_5_cloud", 100, true);
+    pub_6_cloud = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("/pub_6_cloud", 100, true);
 
     ros::spin();
 

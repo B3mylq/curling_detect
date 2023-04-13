@@ -173,7 +173,7 @@ void PGCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     prehandler();
 
-    vertical_angle_filter(0);
+    // vertical_angle_filter(0);
 
     if(in_real_machine == true){
         pcl::toROSMsg(*input_cloud, vertical_cloud_pub);

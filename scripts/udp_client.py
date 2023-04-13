@@ -100,8 +100,10 @@ class LidarClient:
 
     def _get_bag_name(self):
         tz = pytz.timezone('Asia/Shanghai') #东八区
+        # t = datetime.fromtimestamp(int(time.time()),
+        #     pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S %Z%z')
         t = datetime.fromtimestamp(int(time.time()),
-            pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S %Z%z')
+            pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H-%M-%S %Z%z')
         file_name = '-'.join(t.split())
         current_directory = os.path.dirname(os.path.abspath(__file__))
         file_path = "../records/rosbags/"

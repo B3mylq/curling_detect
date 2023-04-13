@@ -164,6 +164,45 @@ void vertical_angle_filter(double target_angle)
     *input_cloud += *target_points;
 }
 
+void vertical_angle_filter(pcl::PointCloud<pcl::PointXYZI>::Ptr input, double target_angle)
+{
+    pcl::PointCloud<pcl::PointXYZI>::Ptr target_points(new pcl::PointCloud<pcl::PointXYZI>);
+
+    vector<vector<int>> idx_of_cols(horizon_num);
+    for (int idx = 0; idx < input->points.size(); idx++)
+    {
+        pcl::PointXYZI pt = input->points[idx];
+        int col_i = ((horizon_num * horizon_accuracy / 2) - atan2(pt.y, pt.x) * ANG) / horizon_accuracy;
+        idx_of_cols[col_i].push_back(idx);
+    }
+
+    for (int col = 0; col < idx_of_cols.size(); col++)
+    {
+        double min_dist = 420;
+        pcl::PointXYZI target_pt;
+
+        for (int i = 0; i < idx_of_cols[col].size(); i++)
+        {
+            int idx = idx_of_cols[col][i];
+            pcl::PointXYZI pt = input->points[idx];
+            double verticalAngle = atan2(pt.z, sqrt(pt.x * pt.x + pt.y * pt.y)) * 180 / M_PI;
+            double angle_dist = abs(verticalAngle - target_angle);
+            if (angle_dist < min_dist)
+            {
+                min_dist = angle_dist;
+                target_pt = pt;
+            }
+        }
+
+        if (min_dist < 420)
+        {
+            target_points->points.push_back(target_pt);
+        }
+    }
+    input->clear();
+    *input += *target_points;
+}
+
 pcl::PointXYZ get_central_pose(pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud)
 {
     pcl::PointXYZ central_pose;
@@ -277,7 +316,7 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     prehandler();
 
-    vertical_angle_filter(0);
+    // vertical_angle_filter(0);
 
     if(in_real_machine){
         pcl::toROSMsg(*input_cloud, line_cloud_pub);
@@ -297,7 +336,9 @@ void CalibrateCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     rotate_pose(offset2, rotation_vector.matrix());
     ROS_INFO("after rotation1:(%f, %f, %f)", offset1.x, offset1.y, offset1.z);
     *filtered_cloud1 += *(position_filter(offset1.x, offset1.y, 0));
+    vertical_angle_filter(filtered_cloud1, 0);
     *filtered_cloud2 += *(position_filter(offset2.x, offset2.y, 0));
+    vertical_angle_filter(filtered_cloud2, 0);
     // *filtered_cloud1 += *(position_filter(3, 13, 0));
     // *filtered_cloud2 += *(position_filter(2, -9, 0));
     Eigen::Vector2d curling1_centre, curling2_centre;

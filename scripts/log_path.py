@@ -15,9 +15,9 @@ from datetime import datetime
 import pytz
 import numpy as np
 
-name = "2023-02-13-14-36-53"
+name = "2023-03-15-13-35-22"
 current_directory = os.path.dirname(os.path.abspath(__file__))
-file_path = "../records/logs/"
+file_path = "../records/logs/2023-03-15/"
 file_path = os.path.join(current_directory, file_path)
 if not os.path.exists(file_path):
     os.mkdir(file_path)
