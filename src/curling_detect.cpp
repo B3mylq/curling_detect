@@ -240,8 +240,9 @@ void position_filter()
 {
     // 根据冰壶位置和运动界限（方框+球形限制）排除范围外的点
     if(detect_count > 5){
-        y_max = 0.42;
-        y_min = 0.42;
+        y_max = 0.96;
+        y_min = 0.96;
+        x_min = 0.06;
     }
     vector<double> poseLimit = {curlingPose.pose.position.x - x_min, -(curlingPose.pose.position.x + x_max),
                                 curlingPose.pose.position.y - y_min, -(curlingPose.pose.position.y + y_max),
@@ -289,7 +290,7 @@ void plane_segment()
     seg.setModelType(pcl::SACMODEL_PLANE); // 设置模型类型
     seg.setMethodType(pcl::SAC_RANSAC);    // 设置随机采样一致性方法类型
     seg.setMaxIterations(1200);            // 最大迭代次数
-    seg.setDistanceThreshold(0.06);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
+    seg.setDistanceThreshold(0.07);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
     seg.setInputCloud(cloud_filtered);     // 输入所需要分割的点云对象
     // 引发分割实现，存储分割结果到点几何inliers及存储平面模型的系数coefficients
     seg.segment(*inliers, *coefficients);
@@ -469,10 +470,22 @@ bool detect_succeed;
 void get_curling_pose()
 {
     detect_succeed = false;
-    pcl::PointXYZ last_pose;
+    pcl::PointXYZ last_pose, next_pose;
     last_pose.x = curlingPose.pose.position.x;
     last_pose.y = curlingPose.pose.position.y;
     last_pose.z = curlingPose.pose.position.z;
+    if(detect_count > 10){
+        int pose_id = curlingPath.poses.size() - 1;
+        double v_duration = curlingPath.poses[pose_id].header.stamp.toSec() - curlingPath.poses[pose_id - 3].header.stamp.toSec();
+        double this_duration = ros::Time::now().toSec() - curlingPath.poses[pose_id].header.stamp.toSec();
+        next_pose.x = last_pose.x + (curlingPath.poses[pose_id].pose.position.x - curlingPath.poses[pose_id - 3].pose.position.x) / v_duration * this_duration;
+        next_pose.y = last_pose.y + (curlingPath.poses[pose_id].pose.position.y - curlingPath.poses[pose_id - 3].pose.position.y) / v_duration * this_duration;
+        next_pose.z = last_pose.z;
+    }else{
+        next_pose.x = last_pose.x;
+        next_pose.y = last_pose.y;
+        next_pose.z = last_pose.z;
+    }
 
     if (central_poses.size() == 0)
     {
@@ -493,7 +506,7 @@ void get_curling_pose()
         //     continue;
         // }
 
-        double current_distance = pcl::euclideanDistance(last_pose, central_poses[i]);
+        double current_distance = pcl::euclideanDistance(next_pose, central_poses[i]);
         if (current_distance < min_distance)
         {
             min_distance = current_distance;
@@ -584,7 +597,7 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     double distance = sqrt(pow((curlingPose.pose.position.x - lidar_pose.x), 2) + 
                            pow((curlingPose.pose.position.y - lidar_pose.y), 2) + 
                            pow((curlingPose.pose.position.z - lidar_pose.z), 2));
-    if (distance < 6.4)
+    if (distance < 6.7)
     {
         plane_segment();
     }
