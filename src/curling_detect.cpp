@@ -180,7 +180,7 @@ void curling_init()
     transformedCurlingPath.poses.clear();
 
     r_max = r_min = 1;
-    x_max = 3.6;
+    x_max = 2.4;
     x_min = 1.2;
     y_max = 1.8;
     y_min = 1.8;
@@ -289,7 +289,7 @@ void plane_segment()
     seg.setModelType(pcl::SACMODEL_PLANE); // 设置模型类型
     seg.setMethodType(pcl::SAC_RANSAC);    // 设置随机采样一致性方法类型
     seg.setMaxIterations(1200);            // 最大迭代次数
-    seg.setDistanceThreshold(0.05);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
+    seg.setDistanceThreshold(0.06);        // 设定距离阀值，距离阀值决定了点被认为是局内点是必须满足的条件
     seg.setInputCloud(cloud_filtered);     // 输入所需要分割的点云对象
     // 引发分割实现，存储分割结果到点几何inliers及存储平面模型的系数coefficients
     seg.segment(*inliers, *coefficients);
@@ -581,15 +581,17 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
 
     cloud_pub();
 
-    position_filter();
-
     double distance = sqrt(pow((curlingPose.pose.position.x - lidar_pose.x), 2) + 
                            pow((curlingPose.pose.position.y - lidar_pose.y), 2) + 
                            pow((curlingPose.pose.position.z - lidar_pose.z), 2));
-    if (distance < 6.7)
+    if (distance < 6.4)
     {
         plane_segment();
     }
+
+    position_filter();
+
+    
 
     // please delete
     pcl::toROSMsg(*cloud_filtered, pub_pc);
