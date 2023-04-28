@@ -597,12 +597,15 @@ void CurlingDetectCallback(const sensor_msgs::PointCloud2::ConstPtr &point_msg)
     double distance = sqrt(pow((curlingPose.pose.position.x - lidar_pose.x), 2) + 
                            pow((curlingPose.pose.position.y - lidar_pose.y), 2) + 
                            pow((curlingPose.pose.position.z - lidar_pose.z), 2));
+    
     if (distance < 6.7)
     {
         plane_segment();
     }
 
     position_filter();
+
+    
 
     
 
